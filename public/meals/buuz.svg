@@ -1,0 +1,27 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 960 640" fill="none">
+  <rect width="960" height="640" fill="#F8FBFF"/>
+  <circle cx="470" cy="360" r="210" fill="#E8F1FF"/>
+  <ellipse cx="470" cy="430" rx="250" ry="46" fill="#D7E6FF"/>
+  <path d="M250 360c20-120 120-190 220-190s200 70 220 190c-40 30-110 48-220 48s-180-18-220-48Z" fill="#F4F7FB" stroke="#D5DEEA" stroke-width="6"/>
+  <g>
+    <ellipse cx="360" cy="330" rx="62" ry="46" fill="#FFF7EE" stroke="#E7C8A4" stroke-width="4"/>
+    <path d="M330 318c10 16 22 24 30 24s20-8 30-24" stroke="#C9844A" stroke-width="4" stroke-linecap="round"/>
+    <path d="M348 300c8 10 16 10 24 0" stroke="#E2B07A" stroke-width="3" stroke-linecap="round"/>
+    <ellipse cx="470" cy="312" rx="68" ry="50" fill="#FFF7EE" stroke="#E7C8A4" stroke-width="4"/>
+    <path d="M438 298c12 18 24 26 32 26s20-8 32-26" stroke="#C9844A" stroke-width="4" stroke-linecap="round"/>
+    <path d="M456 278c10 12 18 12 28 0" stroke="#E2B07A" stroke-width="3" stroke-linecap="round"/>
+    <ellipse cx="575" cy="338" rx="58" ry="42" fill="#FFF7EE" stroke="#E7C8A4" stroke-width="4"/>
+    <path d="M548 326c10 14 20 20 27 20s17-6 27-20" stroke="#C9844A" stroke-width="4" stroke-linecap="round"/>
+    <ellipse cx="410" cy="390" rx="56" ry="40" fill="#FFF7EE" stroke="#E7C8A4" stroke-width="4"/>
+    <path d="M384 378c10 14 18 20 26 20s16-6 26-20" stroke="#C9844A" stroke-width="4" stroke-linecap="round"/>
+    <ellipse cx="520" cy="392" rx="60" ry="42" fill="#FFF7EE" stroke="#E7C8A4" stroke-width="4"/>
+    <path d="M492 378c12 16 20 22 28 22s16-6 28-22" stroke="#C9844A" stroke-width="4" stroke-linecap="round"/>
+  </g>
+  <circle cx="690" cy="250" r="54" fill="#DCFCE7"/>
+  <path d="M666 250c8-18 18-28 28-28 8 0 14 6 18 14 8-6 18-6 26 2 6 8 6 18-2 28-12 14-28 24-42 24-18 0-32-16-28-40Z" fill="#22C55E"/>
+  <path d="M700 214c10 8 16 18 16 28" stroke="#86EFAC" stroke-width="4" stroke-linecap="round"/>
+  <circle cx="250" cy="230" r="36" fill="#FEE2E2"/>
+  <circle cx="250" cy="230" r="16" fill="#EF4444"/>
+  <text x="80" y="90" fill="#3B82F6" font-family="Segoe UI, sans-serif" font-size="28" font-weight="700">ט=יי4@89= E>>;</text>
+  <text x="80" y="126" fill="#64748B" font-family="Segoe UI, sans-serif" font-size="18">CC7 + A0;0B</text>
+</svg>
