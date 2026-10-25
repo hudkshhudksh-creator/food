@@ -2,7 +2,7 @@ import { mkdir, readFile, writeFile } from "fs/promises";
 import path from "path";
 import { hashPassword, verifyPassword } from "@/lib/auth/password";
 import { AppError } from "@/lib/errors";
-import { DEFAULT_ADMIN_SECRET, isValidAdminSecret } from "@/lib/panel-path";
+import { DEFAULT_ADMIN_SECRET, envAdminSecret, isValidAdminSecret } from "@/lib/panel-path";
 import { defaultPermissions } from "@/lib/permissions";
 import {
   isMealDatePassed,
@@ -46,8 +46,14 @@ import type {
 } from "@/types";
 
 const FILE = path.join(process.cwd(), "data", "store.json");
+const TMP_FILE = path.join("/tmp", "food-store.json");
 
+let memory: StoreData | null = null;
 let chain: Promise<unknown> = Promise.resolve();
+
+function storePaths() {
+  return process.env.VERCEL ? [TMP_FILE, FILE] : [FILE, TMP_FILE];
+}
 
 function locked<T>(fn: () => Promise<T>): Promise<T> {
   const run = chain.then(fn, fn);
@@ -59,8 +65,16 @@ function locked<T>(fn: () => Promise<T>): Promise<T> {
 }
 
 async function persist(store: StoreData) {
-  await mkdir(path.dirname(FILE), { recursive: true });
-  await writeFile(FILE, JSON.stringify(store, null, 2), "utf8");
+  memory = store;
+  for (const target of storePaths()) {
+    try {
+      await mkdir(path.dirname(target), { recursive: true });
+      await writeFile(target, JSON.stringify(store, null, 2), "utf8");
+      return;
+    } catch {
+      // Vercel and other read-only hosts keep the in-memory copy.
+    }
+  }
 }
 
 function normalize(store: StoreData) {
@@ -93,18 +107,27 @@ function normalize(store: StoreData) {
 }
 
 async function read(): Promise<StoreData> {
-  try {
-    const raw = await readFile(FILE, "utf8");
-    const store = JSON.parse(raw) as StoreData;
-    if (normalize(store)) await persist(store);
-    return store;
-  } catch (error) {
-    const code = (error as NodeJS.ErrnoException).code;
-    if (code !== "ENOENT") throw error;
-    const seeded = buildSeed();
-    await persist(seeded);
-    return seeded;
+  if (memory) {
+    if (normalize(memory)) await persist(memory);
+    return memory;
   }
+  for (const file of storePaths()) {
+    try {
+      const raw = await readFile(file, "utf8");
+      const store = JSON.parse(raw) as StoreData;
+      if (normalize(store)) await persist(store);
+      else memory = store;
+      return store;
+    } catch (error) {
+      const code = (error as NodeJS.ErrnoException).code;
+      if (code && code !== "ENOENT") continue;
+    }
+  }
+  const seeded = buildSeed();
+  const fromEnv = envAdminSecret();
+  if (fromEnv) seeded.settings.adminSecret = fromEnv;
+  await persist(seeded);
+  return seeded;
 }
 
 function sessionFrom(user: UserRecord, profile: ProfileRecord): SessionUser {
@@ -237,6 +260,8 @@ export async function getSettings(): Promise<AppSettings> {
 }
 
 export async function getAdminSecret() {
+  const fromEnv = envAdminSecret();
+  if (fromEnv) return fromEnv;
   return locked(async () => (await read()).settings.adminSecret);
 }
 

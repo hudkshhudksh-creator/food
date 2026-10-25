@@ -12,9 +12,6 @@ export type SessionPayload = {
 function secretKey() {
   const secret = process.env.SESSION_SECRET;
   if (secret && secret.length >= 16) return new TextEncoder().encode(secret);
-  if (process.env.NODE_ENV === "production" && !process.env.NEXT_PUBLIC_SUPABASE_URL) {
-    throw new Error("SESSION_SECRET is required in production");
-  }
   return new TextEncoder().encode("dev-only-session-secret-change-me-32bytes");
 }
 

@@ -1,8 +1,10 @@
 import { readFileSync } from "fs";
 import path from "path";
-import { DEFAULT_ADMIN_SECRET, isValidAdminSecret } from "@/lib/panel-path";
+import { DEFAULT_ADMIN_SECRET, envAdminSecret, isValidAdminSecret } from "@/lib/panel-path";
 
 export function readAdminSecret() {
+  const fromEnv = envAdminSecret();
+  if (fromEnv) return fromEnv;
   try {
     const raw = readFileSync(path.join(process.cwd(), "data", "store.json"), "utf8");
     const secret = JSON.parse(raw)?.settings?.adminSecret;

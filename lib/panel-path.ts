@@ -1,4 +1,9 @@
-export const DEFAULT_ADMIN_SECRET = "gal-togoo-7k";
+export const DEFAULT_ADMIN_SECRET = "adminpanel";
+
+export function envAdminSecret() {
+  const secret = process.env.ADMIN_SECRET?.trim().toLowerCase();
+  return secret && isValidAdminSecret(secret) ? secret : null;
+}
 
 const RESERVED = new Set([
   "admin",
