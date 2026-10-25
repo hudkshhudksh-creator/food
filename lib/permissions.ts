@@ -59,13 +59,9 @@ const COOK_PAGES = [
 ] as const;
 
 export function firstCookPath(enabled: Set<string>) {
-  return COOK_PAGES.find((item) => enabled.has(item[0]))?.[1] ?? "/admin/rights";
+  return COOK_PAGES.find((item) => enabled.has(item[0]))?.[1] ?? "/admin/meals";
 }
 
 export function isCookPanelPath(pathname: string) {
-  return (
-    pathname.startsWith("/admin/meals") ||
-    pathname.startsWith("/admin/orders") ||
-    pathname.startsWith("/admin/settings")
-  );
+  return pathname.startsWith("/admin/meals") || pathname.startsWith("/admin/orders");
 }

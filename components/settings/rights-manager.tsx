@@ -48,17 +48,21 @@ export function RightsManager({
 
   function run(task: () => Promise<{ ok: boolean; message?: string; secret?: string }>, success: string) {
     startTransition(async () => {
-      const result = await task();
-      if (!result.ok) {
-        toast.error(result.message ?? "Алдаа гарлаа.");
-        return;
+      try {
+        const result = await task();
+        if (!result.ok) {
+          toast.error(result.message ?? "Алдаа гарлаа.");
+          return;
+        }
+        toast.success(success);
+        if (result.secret && result.secret !== secret) {
+          window.location.assign(`/${result.secret}/rights`);
+          return;
+        }
+        router.refresh();
+      } catch {
+        toast.error("Нууц үг солиход алдаа гарлаа. Дахин оролдоно уу.");
       }
-      toast.success(success);
-      if (result.secret && result.secret !== secret) {
-        window.location.assign(`/${result.secret}/rights`);
-        return;
-      }
-      router.refresh();
     });
   }
 

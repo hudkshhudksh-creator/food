@@ -2,7 +2,7 @@ import { AppError } from "@/lib/errors";
 import { requireAdmin, requireStaff, requireUser } from "@/lib/auth/current-user";
 import { getPermissions } from "@/lib/data";
 
-const COOK_KEYS = new Set(["meals", "orders", "settings"]);
+const COOK_KEYS = new Set(["meals", "orders"]);
 
 export async function cookAllowed(permission: string) {
   const permissions = await getPermissions();

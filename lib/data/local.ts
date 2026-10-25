@@ -307,7 +307,7 @@ export async function listAccounts(): Promise<AccountView[]> {
     return store.profiles
       .map((profile) => toAccount(store, profile))
       .filter((account): account is AccountView => {
-        if (!account) return false;
+        if (!account?.email) return false;
         return !account.email.endsWith("@local.mn");
       })
       .sort((a, b) => a.lastName.localeCompare(b.lastName, "mn"));

@@ -13,8 +13,8 @@ export default async function RightsPage() {
   const [secret, permissions, accounts, branches] = await Promise.all([
     getAdminSecret(),
     getPermissions(),
-    listAccounts(),
-    getBranches(true),
+    listAccounts().catch(() => []),
+    getBranches(true).catch(() => []),
   ]);
 
   return (

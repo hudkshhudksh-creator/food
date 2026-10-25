@@ -101,7 +101,7 @@ export function AdminSidebar({
         </span>
         <span>
           <span className="block text-sm font-semibold tracking-wide text-slate-900">{companyName}</span>
-          <span className="text-xs text-slate-400">Админ самбар</span>
+          <span className="text-xs text-slate-400">{user.role === "admin" ? "Админ самбар" : "Тогоочийн самбар"}</span>
         </span>
       </Link>
       <NavLinks secret={secret} role={user.role} />

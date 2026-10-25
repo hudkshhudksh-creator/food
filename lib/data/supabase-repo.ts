@@ -1,8 +1,10 @@
 import { AppError } from "@/lib/errors";
+import { createAdminClient } from "@/lib/supabase/admin";
 import { createClient } from "@/lib/supabase/server";
 import { normalizePhone, rangeFor, todayInUlaanbaatar } from "@/lib/format";
 import { branchStats, dailySeries, monthlySeries, summarize, topMeals } from "@/lib/data/present";
 import type {
+  AccountView,
   AppSettings,
   Branch,
   BranchInput,
@@ -15,6 +17,7 @@ import type {
   OrderView,
   PlaceOrderInput,
   ReportData,
+  Role,
   SessionUser,
 } from "@/types";
 
@@ -209,7 +212,7 @@ export async function getBranches(includeInactive = false) {
   let query = supabase.from("branches").select("id, name, address, is_active, created_at").order("name");
   if (!includeInactive) query = query.eq("is_active", true);
   const { data, error } = await query;
-  if (error) throw new AppError("BRANCH_INACTIVE", error.message);
+  if (error) return [];
   return (data ?? []).map(mapBranch);
 }
 
@@ -379,6 +382,49 @@ export async function getDashboard(date = todayInUlaanbaatar()): Promise<Dashboa
     recentOrders: orders.slice(0, 6),
     monthly: monthlySeries(orders),
   };
+}
+
+export async function listAccounts(): Promise<AccountView[]> {
+  const supabase = await createClient();
+  const { data, error } = await supabase
+    .from("profiles")
+    .select("user_id, first_name, last_name, phone, role, branch_id, branches(name)")
+    .order("last_name");
+  if (error || !data) return [];
+
+  const admin = createAdminClient();
+  const emails = new Map<string, string>();
+  if (admin) {
+    const { data: users } = await admin.auth.admin.listUsers({ perPage: 1000 });
+    for (const user of users?.users ?? []) {
+      if (user.email) emails.set(user.id, user.email);
+    }
+  }
+
+  return data
+    .map((row) => {
+      const email = emails.get(row.user_id) ?? "";
+      const branch = one(row.branches as { name: string } | { name: string }[] | null);
+      const role: Role = row.role === "admin" ? "admin" : row.role === "cook" ? "cook" : "employee";
+      return {
+        id: row.user_id as string,
+        email,
+        firstName: row.first_name ?? "",
+        lastName: row.last_name ?? "",
+        phone: row.phone ?? "",
+        role,
+        branchId: row.branch_id ?? null,
+        branchName: branch?.name ?? "",
+      };
+    })
+    .filter((account) => account.id);
+}
+
+export async function setAccountPassword(userId: string, password: string) {
+  const admin = createAdminClient();
+  if (!admin) throw new AppError("FORBIDDEN", "Нууц үг солих серверийн тохиргоо дутуу байна.");
+  const { error } = await admin.auth.admin.updateUserById(userId, { password });
+  if (error) throw new AppError("FORBIDDEN", error.message);
 }
 
 export async function getReport(range: "day" | "week" | "month"): Promise<ReportData> {

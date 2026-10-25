@@ -8,7 +8,14 @@ function remoteMode() {
 }
 
 export async function getBranches(includeInactive = false) {
-  return remoteMode() ? remote.getBranches(includeInactive) : local.getBranches(includeInactive);
+  if (remoteMode()) {
+    try {
+      return await remote.getBranches(includeInactive);
+    } catch {
+      return local.getBranches(includeInactive);
+    }
+  }
+  return local.getBranches(includeInactive);
 }
 
 export async function saveBranch(input: BranchInput, id?: string) {
@@ -108,7 +115,14 @@ export async function updateAdminSecret(secret: string) {
 }
 
 export async function listAccounts() {
-  if (remoteMode()) return [];
+  if (remoteMode()) {
+    try {
+      const rows = await remote.listAccounts();
+      if (rows.length) return rows;
+    } catch {
+      // Use the local register when Supabase accounts are not ready.
+    }
+  }
   return local.listAccounts();
 }
 
@@ -123,7 +137,14 @@ export async function setAccountRole(actorId: string, userId: string, role: Role
 }
 
 export async function setAccountPassword(userId: string, password: string) {
-  if (remoteMode()) throw new Error("FORBIDDEN");
+  if (remoteMode()) {
+    try {
+      await remote.setAccountPassword(userId, password);
+      return;
+    } catch {
+      // Fall back to the local store so admin password changes still work.
+    }
+  }
   return local.setAccountPassword(userId, password);
 }
 

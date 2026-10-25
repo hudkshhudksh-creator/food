@@ -70,7 +70,6 @@ export const COOK_NAV = [
   { href: "/admin/meals", label: "Өнөөдрийн хоол", icon: "meal", permission: "meals" },
   { href: "/admin/meals/new", label: "Хоол нэмэх", icon: "plus", permission: "meals" },
   { href: "/admin/orders", label: "Захиалгууд", icon: "orders", permission: "orders" },
-  { href: "/admin/settings", label: "Тохиргоо", icon: "settings", permission: "settings" },
 ] as const;
 
 export const EMPLOYEE_NAV = [

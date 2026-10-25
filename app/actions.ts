@@ -455,7 +455,11 @@ export async function setAccountPasswordAction(input: unknown) {
       return { ok: false as const, message: parsed.error.issues[0]?.message ?? "Мэдээллээ шалгана уу." };
     }
     await setAccountPassword(parsed.data.userId, parsed.data.password);
-    revalidatePath("/admin", "layout");
+    try {
+      revalidatePath("/admin", "layout");
+    } catch {
+      // Password is already saved; a refresh error must not blank the page.
+    }
     return { ok: true as const };
   } catch (error) {
     return { ok: false as const, message: errorMessage(error, "Нууц үг солиход алдаа гарлаа.") };

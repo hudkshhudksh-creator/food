@@ -9,7 +9,7 @@ export const dynamic = "force-dynamic";
 export default async function SettingsPage() {
   const user = await getCurrentUser();
   if (!user) redirect("/login");
-  if (user.role !== "admin" && user.role !== "cook") redirect("/");
+  if (user.role !== "admin") redirect("/");
   const settings = await getSettings();
   return (
     <div>
