@@ -20,8 +20,8 @@ export default async function RightsPage() {
   return (
     <div className="space-y-6">
       <PageHeader
-        title="Эрх"
-        description="Зөвхөн админ тогооч, хэрэглэгчийн эрхийг нэмж хасна."
+        title="Хэрэглэгч, эрх"
+        description="Тогооч, хэрэглэгч нэмэх, хасах, эрх өгөх, нууц үг солих."
       />
       <RightsManager
         secret={secret}

@@ -5,17 +5,19 @@ import { getSupabaseUser } from "@/lib/data/supabase-repo";
 import type { SessionUser } from "@/types";
 
 export async function getCurrentUser(): Promise<SessionUser | null> {
+  const session = await readSession();
+  if (session) {
+    const local = await getUserById(session.sub);
+    if (local) return local;
+  }
   if (isSupabaseConfigured()) {
     try {
-      const remote = await getSupabaseUser();
-      if (remote) return remote;
+      return await getSupabaseUser();
     } catch {
-      // Local session still works if Supabase is not ready.
+      return null;
     }
   }
-  const session = await readSession();
-  if (!session) return null;
-  return getUserById(session.sub);
+  return null;
 }
 
 export async function requireUser() {

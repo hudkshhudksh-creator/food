@@ -70,11 +70,30 @@ async function persist(store: StoreData) {
     try {
       await mkdir(path.dirname(target), { recursive: true });
       await writeFile(target, JSON.stringify(store, null, 2), "utf8");
-      return;
+      break;
     } catch {
       // Vercel and other read-only hosts keep the in-memory copy.
     }
   }
+  try {
+    const { saveCloudStore } = await import("@/lib/data/cloud-store");
+    await saveCloudStore(store);
+  } catch {
+    // Cloud copy is optional; local memory still holds the change.
+  }
+}
+
+async function readFromFiles(): Promise<StoreData | null> {
+  for (const file of storePaths()) {
+    try {
+      const raw = await readFile(file, "utf8");
+      return JSON.parse(raw) as StoreData;
+    } catch (error) {
+      const code = (error as NodeJS.ErrnoException).code;
+      if (code && code !== "ENOENT") continue;
+    }
+  }
+  return null;
 }
 
 function normalize(store: StoreData) {
@@ -106,23 +125,30 @@ function normalize(store: StoreData) {
   return changed;
 }
 
+async function accept(store: StoreData) {
+  if (normalize(store)) await persist(store);
+  else memory = store;
+  return store;
+}
+
 async function read(): Promise<StoreData> {
   if (memory) {
     if (normalize(memory)) await persist(memory);
     return memory;
   }
-  for (const file of storePaths()) {
-    try {
-      const raw = await readFile(file, "utf8");
-      const store = JSON.parse(raw) as StoreData;
-      if (normalize(store)) await persist(store);
-      else memory = store;
-      return store;
-    } catch (error) {
-      const code = (error as NodeJS.ErrnoException).code;
-      if (code && code !== "ENOENT") continue;
-    }
+  if (!process.env.VERCEL) {
+    const localFile = await readFromFiles();
+    if (localFile) return accept(localFile);
   }
+  try {
+    const { loadCloudStore } = await import("@/lib/data/cloud-store");
+    const cloud = await loadCloudStore();
+    if (cloud?.users?.length) return accept(cloud);
+  } catch {
+    // Use files or seed when the cloud copy is missing.
+  }
+  const fromFile = await readFromFiles();
+  if (fromFile) return accept(fromFile);
   const seeded = buildSeed();
   const fromEnv = envAdminSecret();
   if (fromEnv) seeded.settings.adminSecret = fromEnv;

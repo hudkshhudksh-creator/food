@@ -1,10 +1,11 @@
-import { isSupabaseConfigured } from "@/lib/config";
 import * as local from "@/lib/data/local";
 import * as remote from "@/lib/data/supabase-repo";
 import type { AccountInput, BranchInput, MealInput, OrderQuery, OrderStatus, PermissionGroup, PlaceOrderInput, Role } from "@/types";
 
 function remoteMode() {
-  return isSupabaseConfigured();
+  // Account, meal, and order data live in the JSON store so admin can add
+  // and remove users. Supabase is used as a cloud copy of that store.
+  return false;
 }
 
 export async function getBranches(includeInactive = false) {

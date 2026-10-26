@@ -85,7 +85,8 @@ export async function loginAction(input: { email: string; password: string; next
     return { ok: false as const, message: parsed.error.issues[0]?.message ?? "Мэдээллээ шалгана уу." };
   }
 
-  if (isSupabaseConfigured()) {
+  const user = await authenticate(parsed.data.email, parsed.data.password);
+  if (!user && isSupabaseConfigured()) {
     const supabase = await createClient();
     const { error } = await supabase.auth.signInWithPassword({
       email: parsed.data.email,
@@ -109,8 +110,6 @@ export async function loginAction(input: { email: string; password: string; next
     }
     redirect(await safeNext(input.next, role));
   }
-
-  const user = await authenticate(parsed.data.email, parsed.data.password);
   if (!user) return { ok: false as const, message: "Имэйл эсвэл нууц үг буруу байна." };
   if (input.audience === "cook" && user.role !== "admin" && user.role !== "cook") {
     return { ok: false as const, message: "Энэ хаяг зөвхөн админ, тогоочид зориулагдсан." };
@@ -126,9 +125,6 @@ export async function loginBranchAction(input: { branchId: string; password: str
   const parsed = branchLoginSchema.safeParse(input);
   if (!parsed.success) {
     return { ok: false as const, message: parsed.error.issues[0]?.message ?? "Мэдээллээ шалгана уу." };
-  }
-  if (isSupabaseConfigured()) {
-    return { ok: false as const, message: "Салбарын нэвтрэлт одоогоор боломжгүй." };
   }
   let user;
   try {

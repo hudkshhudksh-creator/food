@@ -24,8 +24,9 @@ import {
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { DEMO_ACCOUNTS } from "@/lib/constants";
 import { fullName } from "@/lib/format";
-import type { AccountView, Branch, Permission, PermissionGroup } from "@/types";
+import type { AccountView, Branch, Permission, PermissionGroup, Role } from "@/types";
 
 const controlClass = "h-11 rounded-xl px-3";
 
@@ -45,6 +46,15 @@ export function RightsManager({
   const router = useRouter();
   const [pending, startTransition] = useTransition();
   const [draftSecret, setDraftSecret] = useState(secret);
+  const [filter, setFilter] = useState<"all" | Role>("all");
+  const demoEmails = new Set(DEMO_ACCOUNTS.map((item) => item.email));
+  const visible = accounts.filter((account) => filter === "all" || account.role === filter);
+  const counts = {
+    all: accounts.length,
+    admin: accounts.filter((item) => item.role === "admin").length,
+    cook: accounts.filter((item) => item.role === "cook").length,
+    employee: accounts.filter((item) => item.role === "employee").length,
+  };
 
   function run(task: () => Promise<{ ok: boolean; message?: string; secret?: string }>, success: string) {
     startTransition(async () => {
@@ -61,7 +71,7 @@ export function RightsManager({
         }
         router.refresh();
       } catch {
-        toast.error("Нууц үг солиход алдаа гарлаа. Дахин оролдоно уу.");
+        toast.error("Алдаа гарлаа. Дахин оролдоно уу.");
       }
     });
   }
@@ -69,59 +79,54 @@ export function RightsManager({
   return (
     <div className="space-y-6">
       <section className="surface rounded-2xl p-5">
-        <h2 className="text-base font-semibold">Нууц самбарын хаяг</h2>
-        <p className="mt-1 text-sm text-slate-500">
-          Админ болон тогоочийн самбар зөвхөн энэ хаягаар нээгдэнэ. /admin хаяг хаалттай.
-        </p>
-        <p className="mt-3 text-sm font-medium text-slate-800">Одоогийн хаяг: /{secret}</p>
-        <div className="mt-4 flex flex-col gap-2 sm:flex-row">
-          <Input
-            value={draftSecret}
-            onChange={(event) => setDraftSecret(event.target.value.toLowerCase())}
-            className={controlClass}
-            aria-label="Нууц хаяг"
-          />
-          <Button
-            className="h-11 rounded-xl"
-            disabled={pending}
-            onClick={() => run(() => updateAdminSecretAction(draftSecret), "Нууц хаяг солигдлоо.")}
-          >
-            Хаяг солих
-          </Button>
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
+          <div>
+            <h2 className="text-base font-semibold">Хэрэглэгчид</h2>
+            <p className="mt-1 text-sm text-slate-500">
+              Энд нэмсэн тогооч, хэрэглэгч харагдана. Эрх өгөх, нууц үг солих, хасах.
+            </p>
+          </div>
+          <div className="flex flex-wrap gap-2">
+            {(
+              [
+                ["all", `Бүгд (${counts.all})`],
+                ["admin", `Админ (${counts.admin})`],
+                ["cook", `Тогооч (${counts.cook})`],
+                ["employee", `Хэрэглэгч (${counts.employee})`],
+              ] as const
+            ).map(([key, label]) => (
+              <button
+                key={key}
+                type="button"
+                onClick={() => setFilter(key)}
+                className={
+                  filter === key
+                    ? "rounded-full bg-blue-500 px-3 py-1 text-xs font-medium text-white"
+                    : "rounded-full bg-slate-100 px-3 py-1 text-xs font-medium text-slate-600"
+                }
+              >
+                {label}
+              </button>
+            ))}
+          </div>
         </div>
-      </section>
-
-      <div className="grid gap-6 lg:grid-cols-2">
-        <PermissionColumn
-          title="Тогоочийн эрх"
-          group="cook"
-          permissions={permissions.filter((item) => item.group === "cook")}
-          pending={pending}
-          onToggle={(id, enabled) => run(() => setPermissionEnabledAction(id, enabled), "Эрх шинэчлэгдлээ.")}
-          onRemove={(id) => run(() => removePermissionAction(id), "Эрх хасагдлаа.")}
-          onAdd={(label) => run(() => addPermissionAction({ label, group: "cook" }), "Эрх нэмэгдлээ.")}
-        />
-        <PermissionColumn
-          title="Хэрэглэгчийн эрх"
-          group="employee"
-          permissions={permissions.filter((item) => item.group === "employee")}
-          pending={pending}
-          onToggle={(id, enabled) => run(() => setPermissionEnabledAction(id, enabled), "Эрх шинэчлэгдлээ.")}
-          onRemove={(id) => run(() => removePermissionAction(id), "Эрх хасагдлаа.")}
-          onAdd={(label) => run(() => addPermissionAction({ label, group: "employee" }), "Эрх нэмэгдлээ.")}
-        />
-      </div>
-
-      <section className="surface rounded-2xl p-5">
-        <h2 className="text-base font-semibold">Бүртгэлд эрх өгөх</h2>
-        <p className="mt-1 text-sm text-slate-500">
-          Зөвхөн админ тогооч, хэрэглэгчийн эрхийг өгч хасна. Бүртгэлийн нууц үгийг эндээс солино.
-        </p>
         <div className="mt-4 grid gap-3">
-          {accounts.map((account) => (
+          {visible.length === 0 ? (
+            <p className="rounded-xl bg-slate-50 px-4 py-6 text-center text-sm text-slate-500">
+              Энэ жагсаалтад хэрэглэгч алга. Доороос нэмнэ үү.
+            </p>
+          ) : null}
+          {visible.map((account) => (
             <article key={account.id} className="flex flex-col gap-3 rounded-xl border border-slate-100 p-4 sm:flex-row sm:items-center sm:justify-between">
               <div>
-                <p className="font-medium">{fullName(account.lastName, account.firstName)}</p>
+                <p className="font-medium">
+                  {fullName(account.lastName, account.firstName)}
+                  {demoEmails.has(account.email) ? (
+                    <span className="ml-2 rounded-full bg-amber-50 px-2 py-0.5 text-xs font-medium text-amber-700">
+                      Туршилт
+                    </span>
+                  ) : null}
+                </p>
                 <p className="text-sm text-slate-500">
                   {account.email}
                   {account.branchName ? ` · ${account.branchName}` : ""}
@@ -177,6 +182,50 @@ export function RightsManager({
           ))}
         </div>
         <AccountForm branches={branches} pending={pending} onCreate={(input) => run(() => createAccountAction(input), "Бүртгэл нэмэгдлээ.")} />
+      </section>
+
+      <div className="grid gap-6 lg:grid-cols-2">
+        <PermissionColumn
+          title="Тогоочийн эрх"
+          group="cook"
+          permissions={permissions.filter((item) => item.group === "cook")}
+          pending={pending}
+          onToggle={(id, enabled) => run(() => setPermissionEnabledAction(id, enabled), "Эрх шинэчлэгдлээ.")}
+          onRemove={(id) => run(() => removePermissionAction(id), "Эрх хасагдлаа.")}
+          onAdd={(label) => run(() => addPermissionAction({ label, group: "cook" }), "Эрх нэмэгдлээ.")}
+        />
+        <PermissionColumn
+          title="Хэрэглэгчийн эрх"
+          group="employee"
+          permissions={permissions.filter((item) => item.group === "employee")}
+          pending={pending}
+          onToggle={(id, enabled) => run(() => setPermissionEnabledAction(id, enabled), "Эрх шинэчлэгдлээ.")}
+          onRemove={(id) => run(() => removePermissionAction(id), "Эрх хасагдлаа.")}
+          onAdd={(label) => run(() => addPermissionAction({ label, group: "employee" }), "Эрх нэмэгдлээ.")}
+        />
+      </div>
+
+      <section className="surface rounded-2xl p-5">
+        <h2 className="text-base font-semibold">Нууц самбарын хаяг</h2>
+        <p className="mt-1 text-sm text-slate-500">
+          Админ болон тогоочийн самбар зөвхөн энэ хаягаар нээгдэнэ. /admin хаяг хаалттай.
+        </p>
+        <p className="mt-3 text-sm font-medium text-slate-800">Одоогийн хаяг: /{secret}</p>
+        <div className="mt-4 flex flex-col gap-2 sm:flex-row">
+          <Input
+            value={draftSecret}
+            onChange={(event) => setDraftSecret(event.target.value.toLowerCase())}
+            className={controlClass}
+            aria-label="Нууц хаяг"
+          />
+          <Button
+            className="h-11 rounded-xl"
+            disabled={pending}
+            onClick={() => run(() => updateAdminSecretAction(draftSecret), "Нууц хаяг солигдлоо.")}
+          >
+            Хаяг солих
+          </Button>
+        </div>
       </section>
     </div>
   );
