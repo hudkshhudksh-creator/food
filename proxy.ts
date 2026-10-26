@@ -3,7 +3,7 @@ import { isSupabaseConfigured } from "@/lib/config";
 import { SESSION_COOKIE, verifySession } from "@/lib/auth/token";
 import { isPanelPath, toAdminPath } from "@/lib/panel-path";
 import { readAdminSecret } from "@/lib/panel-secret";
-import { updateSupabaseSession } from "@/lib/supabase/middleware";
+import { refreshSupabaseAuth } from "@/lib/supabase/middleware";
 
 function hidden() {
   return new NextResponse("Хуудас олдсонгүй.", {
@@ -12,52 +12,69 @@ function hidden() {
   });
 }
 
-export async function proxy(request: NextRequest) {
-  if (isSupabaseConfigured()) return updateSupabaseSession(request);
-  return updateLocalSession(request);
+function redirectTo(request: NextRequest, pathname: string, next?: string) {
+  const url = request.nextUrl.clone();
+  url.pathname = pathname;
+  url.search = "";
+  if (next) url.searchParams.set("next", next);
+  return NextResponse.redirect(url);
 }
 
-async function updateLocalSession(request: NextRequest) {
+function withCookies(target: NextResponse, source?: NextResponse | null) {
+  source?.cookies.getAll().forEach((cookie) => {
+    target.cookies.set(cookie.name, cookie.value);
+  });
+  return target;
+}
+
+export async function proxy(request: NextRequest) {
   const { pathname } = request.nextUrl;
   const secret = readAdminSecret();
   const panel = `/${secret}`;
-  const token = request.cookies.get(SESSION_COOKIE)?.value;
-  const session = token ? await verifySession(token) : null;
   const isLogin = pathname === "/login";
 
-  if (pathname === "/admin" || pathname.startsWith("/admin/")) return hidden();
+  const token = request.cookies.get(SESSION_COOKIE)?.value;
+  const local = token ? await verifySession(token) : null;
+  let role = local?.role ?? null;
+  let supabaseResponse: NextResponse | null = null;
 
-  if (isPanelPath(pathname, secret)) {
-    if (!session) {
-      const url = request.nextUrl.clone();
-      url.pathname = "/login";
-      url.searchParams.set("next", pathname);
-      return NextResponse.redirect(url);
+  if (isSupabaseConfigured()) {
+    const refreshed = await refreshSupabaseAuth(request);
+    supabaseResponse = refreshed.response;
+    if (!role) role = refreshed.role;
+  }
+
+  const staff = role === "admin" || role === "cook";
+  const isInternalAdmin = pathname === "/admin" || pathname.startsWith("/admin/");
+  const isSecretPanel = isPanelPath(pathname, secret);
+
+  if (isInternalAdmin || isSecretPanel) {
+    if (!staff) {
+      if (!role && isSecretPanel) {
+        return withCookies(redirectTo(request, "/login", pathname), supabaseResponse);
+      }
+      return hidden();
     }
-    if (session.role !== "admin" && session.role !== "cook") return hidden();
-    const internalPath = toAdminPath(pathname, secret);
+    const internalPath = isSecretPanel ? toAdminPath(pathname, secret) : pathname;
     const headers = new Headers(request.headers);
     headers.set("x-admin-path", internalPath);
-    const url = request.nextUrl.clone();
-    url.pathname = internalPath;
-    return NextResponse.rewrite(url, { request: { headers } });
+    if (isSecretPanel) {
+      const url = request.nextUrl.clone();
+      url.pathname = internalPath;
+      return withCookies(NextResponse.rewrite(url, { request: { headers } }), supabaseResponse);
+    }
+    return withCookies(NextResponse.next({ request: { headers } }), supabaseResponse);
   }
 
-  if (!session && !isLogin) {
-    const url = request.nextUrl.clone();
-    url.pathname = "/login";
-    url.searchParams.set("next", pathname);
-    return NextResponse.redirect(url);
+  if (!role && !isLogin) {
+    return withCookies(redirectTo(request, "/login", pathname), supabaseResponse);
   }
 
-  if (session && isLogin) {
-    const url = request.nextUrl.clone();
-    url.pathname = session.role === "employee" ? "/" : panel;
-    url.search = "";
-    return NextResponse.redirect(url);
+  if (role && isLogin) {
+    return withCookies(redirectTo(request, role === "employee" ? "/" : panel), supabaseResponse);
   }
 
-  return NextResponse.next();
+  return withCookies(NextResponse.next({ request }), supabaseResponse);
 }
 
 export const config = {
