@@ -185,6 +185,16 @@ export async function provisionAuthUser(input: {
   }
 }
 
+export async function removeAuthUser(email: string) {
+  const admin = createAdminClient();
+  if (!admin) return;
+  const normalized = email.trim().toLowerCase();
+  const { data } = await admin.auth.admin.listUsers({ page: 1, perPage: 1000 });
+  const user = data?.users.find((item) => item.email?.toLowerCase() === normalized);
+  if (!user) return;
+  await admin.auth.admin.deleteUser(user.id);
+}
+
 export async function saveCloudStore(store: StoreData) {
   const saved = await withSql(async (sql) => {
     await ensureTable(sql);

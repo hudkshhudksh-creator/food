@@ -133,35 +133,36 @@ function normalize(store: StoreData) {
   return changed;
 }
 
-async function accept(store: StoreData) {
-  if (normalize(store)) await persist(store);
-  else memory = store;
+function take(store: StoreData) {
+  normalize(store);
+  memory = store;
   return store;
 }
 
 async function read(): Promise<StoreData> {
-  if (memory) {
+  if (process.env.VERCEL) {
+    try {
+      const { loadCloudStore } = await import("@/lib/data/cloud-store");
+      const cloud = await loadCloudStore();
+      if (cloud?.users?.length) return take(cloud);
+    } catch {
+      // Keep this instance's copy if the database is briefly unreachable.
+    }
+    if (memory) return take(memory);
+  } else if (memory) {
     if (normalize(memory)) await persist(memory);
     return memory;
-  }
-  if (!process.env.VERCEL) {
+  } else {
     const localFile = await readFromFiles();
-    if (localFile) return accept(localFile);
+    if (localFile) return take(localFile);
   }
-  try {
-    const { loadCloudStore } = await import("@/lib/data/cloud-store");
-    const cloud = await loadCloudStore();
-    if (cloud?.users?.length) return accept(cloud);
-  } catch {
-    // Use files or seed when the cloud copy is missing.
-  }
+
   const fromFile = await readFromFiles();
-  if (fromFile) return accept(fromFile);
+  if (fromFile) return take(fromFile);
   const seeded = buildSeed();
   const fromEnv = envAdminSecret();
   if (fromEnv) seeded.settings.adminSecret = fromEnv;
-  memory = seeded;
-  return seeded;
+  return take(seeded);
 }
 
 function sessionFrom(user: UserRecord, profile: ProfileRecord): SessionUser {
@@ -418,13 +419,23 @@ export async function deleteAccount(actorId: string, userId: string) {
     const store = await read();
     if (actorId === userId) throw new AppError("FORBIDDEN");
     const profile = store.profiles.find((item) => item.userId === userId);
-    if (!profile) throw new AppError("ACCOUNT_NOT_FOUND");
-    if (profile.role === "admin" && store.profiles.filter((item) => item.role === "admin").length <= 1) {
+    const user = store.users.find((item) => item.id === userId);
+    if (!profile && !user) return;
+    if (profile?.role === "admin" && store.profiles.filter((item) => item.role === "admin").length <= 1) {
       throw new AppError("LAST_ADMIN");
     }
-    store.users = store.users.filter((user) => user.id !== userId);
+    const email = user?.email;
+    store.users = store.users.filter((item) => item.id !== userId);
     store.profiles = store.profiles.filter((item) => item.userId !== userId);
     await persist(store, { requireCloud: true });
+    if (email) {
+      try {
+        const { removeAuthUser } = await import("@/lib/data/cloud-store");
+        await removeAuthUser(email);
+      } catch {
+        // Local delete still stands if Auth cleanup is unavailable.
+      }
+    }
   });
 }
 
