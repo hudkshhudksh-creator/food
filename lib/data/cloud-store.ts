@@ -3,43 +3,97 @@ import type { StoreData } from "@/types";
 
 const TABLE = "app_store";
 
-function databaseUrl() {
-  const direct =
-    process.env.POSTGRES_URL_NON_POOLING ||
-    process.env.POSTGRES_URL ||
-    process.env.POSTGRES_PRISMA_URL ||
-    process.env.DATABASE_URL ||
-    process.env.SUPABASE_DATABASE_URL ||
-    process.env.POSTGRES_URL_NO_SSL ||
-    process.env.STORAGE_POSTGRES_URL ||
-    process.env.NEXT_PUBLIC_SUPABASE_POSTGRES_URL;
-  if (direct) return direct;
-  const host = process.env.POSTGRES_HOST;
-  const user = process.env.POSTGRES_USER;
-  const password = process.env.POSTGRES_PASSWORD;
-  const database = process.env.POSTGRES_DATABASE || process.env.POSTGRES_DB || "postgres";
-  if (host && user && password) {
-    return `postgresql://${encodeURIComponent(user)}:${encodeURIComponent(password)}@${host}:5432/${database}?sslmode=require`;
+function envPick(names: string[]) {
+  for (const name of names) {
+    const value = process.env[name]?.trim();
+    if (value) return value;
   }
-  return undefined;
+  for (const [key, value] of Object.entries(process.env)) {
+    if (!value?.trim()) continue;
+    if (names.some((name) => key === name || key.endsWith(`_${name}`))) return value.trim();
+  }
+}
+
+function addUrl(urls: string[], value?: string) {
+  const url = value?.trim();
+  if (url && !urls.includes(url)) urls.push(url);
+}
+
+function poolScore(url: string) {
+  let score = 0;
+  const pooler = url.includes("pooler.supabase.com");
+  if (pooler && url.includes(":5432")) score += 15;
+  if (pooler && url.includes(":6543")) score += 8;
+  if (url.includes("pgbouncer=true")) score += 2;
+  if (/db\.[^/]*supabase\.co/i.test(url) && !pooler) score -= 8;
+  return score;
+}
+
+function expandUrl(url: string) {
+  const variants = [url];
+  if (url.includes(":6543")) {
+    variants.push(url.replace(":6543", ":5432").replace("pgbouncer=true&", "").replace("&pgbouncer=true", "").replace("?pgbouncer=true", ""));
+  }
+  if (url.includes("pooler.supabase.com") && url.includes(":5432") && url.includes("pgbouncer=true")) {
+    variants.push(url.replace("pgbouncer=true&", "").replace("&pgbouncer=true", "").replace("?pgbouncer=true", ""));
+  }
+  return variants;
+}
+
+function databaseUrls() {
+  const urls: string[] = [];
+  const found: string[] = [];
+  addUrl(found, process.env.POSTGRES_URL);
+  addUrl(found, process.env.POSTGRES_PRISMA_URL);
+  addUrl(found, process.env.DATABASE_URL);
+  addUrl(found, process.env.SUPABASE_DATABASE_URL);
+  addUrl(found, process.env.POSTGRES_URL_NO_SSL);
+  addUrl(found, process.env.POSTGRES_URL_NON_POOLING);
+
+  for (const [key, value] of Object.entries(process.env)) {
+    if (!value) continue;
+    if (/(POSTGRES_URL|DATABASE_URL|SUPABASE_DATABASE_URL)/i.test(key) && !/(HOST|USER|PASSWORD|DATABASE)$/i.test(key)) {
+      addUrl(found, value);
+    }
+  }
+
+  const host = envPick(["POSTGRES_HOST", "SUPABASE_HOST"]);
+  const user = envPick(["POSTGRES_USER", "SUPABASE_USER"]);
+  const password = envPick(["POSTGRES_PASSWORD", "SUPABASE_PASSWORD"]);
+  const database = envPick(["POSTGRES_DATABASE", "POSTGRES_DB", "SUPABASE_DB"]) || "postgres";
+  if (host && user && password) {
+    addUrl(found, `postgresql://${encodeURIComponent(user)}:${encodeURIComponent(password)}@${host}:6543/${database}?sslmode=require&pgbouncer=true`);
+    addUrl(found, `postgresql://${encodeURIComponent(user)}:${encodeURIComponent(password)}@${host}:5432/${database}?sslmode=require`);
+  }
+
+  for (const url of found) {
+    for (const variant of expandUrl(url)) addUrl(urls, variant);
+  }
+
+  return urls.sort((a, b) => poolScore(b) - poolScore(a));
 }
 
 async function withSql<T>(fn: (sql: import("postgres").Sql) => Promise<T>): Promise<T | null> {
-  const url = databaseUrl();
-  if (!url) return null;
+  const urls = databaseUrls();
+  if (!urls.length) return null;
   const postgres = (await import("postgres")).default;
-  const sql = postgres(url, {
-    ssl: url.includes("sslmode=disable") ? false : { rejectUnauthorized: false },
-    max: 1,
-    idle_timeout: 5,
-    connect_timeout: 10,
-    prepare: false,
-  });
-  try {
-    return await fn(sql);
-  } finally {
-    await sql.end({ timeout: 5 }).catch(() => undefined);
+  for (const url of urls) {
+    const sql = postgres(url, {
+      ssl: url.includes("sslmode=disable") ? false : { rejectUnauthorized: false },
+      max: 1,
+      idle_timeout: 5,
+      connect_timeout: 8,
+      prepare: false,
+    });
+    try {
+      return await fn(sql);
+    } catch {
+      // Vercel cannot reach the IPv6-only direct host; try the next URL.
+    } finally {
+      await sql.end({ timeout: 5 }).catch(() => undefined);
+    }
   }
+  return null;
 }
 
 async function ensureTable(sql: import("postgres").Sql) {
@@ -57,7 +111,7 @@ export async function loadCloudStore(): Promise<StoreData | null> {
     await ensureTable(sql);
     const rows = await sql<{ data: StoreData }[]>`select data from public.app_store where id = 1`;
     return rows[0]?.data ?? null;
-  }).catch(() => null);
+  });
   if (fromPg?.users?.length) return fromPg;
   const fromBlob = await loadBlobStore();
   if (fromBlob?.users?.length) return fromBlob;
@@ -143,7 +197,7 @@ export async function saveCloudStore(store: StoreData) {
             updated_at = now()
     `;
     return true;
-  }).catch(() => false);
+  });
   if (saved) return true;
   if (await saveBlobStore(store)) return true;
 
