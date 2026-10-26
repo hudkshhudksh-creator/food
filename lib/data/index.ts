@@ -94,7 +94,14 @@ export async function getReport(range: "day" | "week" | "month") {
 }
 
 export async function getSettings() {
-  return remoteMode() ? remote.getSettings() : local.getSettings();
+  if (remoteMode()) {
+    try {
+      return await remote.getSettings();
+    } catch {
+      return local.getSettings();
+    }
+  }
+  return local.getSettings();
 }
 
 export async function updateSettings(input: { companyName: string; supportPhone: string }) {
