@@ -21,7 +21,7 @@ export default async function RightsPage() {
     <div className="space-y-6">
       <PageHeader
         title="Хэрэглэгч, эрх"
-        description="Тогооч, хэрэглэгч нэмэх, хасах, эрх өгөх, нууц үг солих."
+        description="Тогооч, хэрэглэгч нэмэх. Тогоочийн цэс, хэрэглэгчийн эрхийг энд тохируулна."
       />
       <RightsManager
         secret={secret}

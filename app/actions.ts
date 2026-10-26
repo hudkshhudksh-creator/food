@@ -4,7 +4,7 @@ import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { isSupabaseConfigured } from "@/lib/config";
 import { employeeAllowed, requireCook } from "@/lib/auth/access";
-import { requireStaff, requireUser } from "@/lib/auth/current-user";
+import { requireAdmin, requireStaff, requireUser } from "@/lib/auth/current-user";
 import { clearSession, createSession } from "@/lib/auth/session";
 import { authenticate, authenticateBranch } from "@/lib/data/local";
 import {
@@ -33,8 +33,7 @@ import {
 } from "@/lib/data";
 import { createClient } from "@/lib/supabase/server";
 import { AppError, errorMessage } from "@/lib/errors";
-import { isPanelPath, toAdminPath } from "@/lib/panel-path";
-import { isCookPanelPath } from "@/lib/permissions";
+import { isPanelPath } from "@/lib/panel-path";
 import {
   accountPasswordSchema,
   accountSchema,
@@ -65,16 +64,11 @@ function revalidateAll() {
 async function safeNext(next: string | undefined, role: Role) {
   const secret = await getAdminSecret();
   const panel = `/${secret}`;
-  const cookHome = `${panel}/meals`;
-  const fallback = role === "admin" ? panel : role === "cook" ? cookHome : "/";
+  const fallback = role === "employee" ? "/" : panel;
   if (!next || !next.startsWith("/") || next.startsWith("//") || next.startsWith("/login") || next.startsWith("/admin")) {
     return fallback;
   }
-  if (role === "admin") return isPanelPath(next, secret) ? next : panel;
-  if (role === "cook") {
-    if (isPanelPath(next, secret) && isCookPanelPath(toAdminPath(next, secret))) return next;
-    return cookHome;
-  }
+  if (role === "admin" || role === "cook") return isPanelPath(next, secret) ? next : panel;
   if (isPanelPath(next, secret)) return "/";
   return next;
 }
@@ -350,7 +344,7 @@ export async function updateSettingsAction(input: unknown) {
 
 export async function updateAdminSecretAction(secret: string) {
   try {
-    await requireCook("rights");
+    await requireAdmin();
     const next = await updateAdminSecret(secret.trim().toLowerCase());
     revalidatePath("/", "layout");
     return { ok: true as const, secret: next };
@@ -361,7 +355,7 @@ export async function updateAdminSecretAction(secret: string) {
 
 export async function setPermissionEnabledAction(id: string, enabled: boolean) {
   try {
-    await requireCook("rights");
+    await requireAdmin();
     await setPermissionEnabled(id, enabled);
     revalidatePath("/", "layout");
     revalidatePath("/admin", "layout");
@@ -373,7 +367,7 @@ export async function setPermissionEnabledAction(id: string, enabled: boolean) {
 
 export async function addPermissionAction(input: unknown) {
   try {
-    await requireCook("rights");
+    await requireAdmin();
     const parsed = permissionLabelSchema.safeParse(input);
     if (!parsed.success) {
       return { ok: false as const, message: parsed.error.issues[0]?.message ?? "Мэдээллээ шалгана уу." };
@@ -388,7 +382,7 @@ export async function addPermissionAction(input: unknown) {
 
 export async function removePermissionAction(id: string) {
   try {
-    await requireCook("rights");
+    await requireAdmin();
     await removePermission(id);
     revalidatePath("/admin", "layout");
     return { ok: true as const };
@@ -399,7 +393,7 @@ export async function removePermissionAction(id: string) {
 
 export async function createAccountAction(input: unknown) {
   try {
-    const actor = await requireCook("rights");
+    const actor = await requireAdmin();
     const parsed = accountSchema.safeParse(input);
     if (!parsed.success) {
       return { ok: false as const, message: parsed.error.issues[0]?.message ?? "Мэдээллээ шалгана уу." };
@@ -418,7 +412,7 @@ export async function createAccountAction(input: unknown) {
 
 export async function setAccountRoleAction(userId: string, role: Role) {
   try {
-    const actor = await requireCook("rights");
+    const actor = await requireAdmin();
     await setAccountRole(actor.id, userId, role);
     revalidatePath("/", "layout");
     revalidatePath("/admin", "layout");
@@ -430,7 +424,7 @@ export async function setAccountRoleAction(userId: string, role: Role) {
 
 export async function deleteAccountAction(userId: string) {
   try {
-    const actor = await requireCook("rights");
+    const actor = await requireAdmin();
     await deleteAccount(actor.id, userId);
     revalidatePath("/admin", "layout");
     return { ok: true as const };
@@ -441,7 +435,7 @@ export async function deleteAccountAction(userId: string) {
 
 export async function setAccountPasswordAction(input: unknown) {
   try {
-    await requireCook("rights");
+    await requireAdmin();
     const parsed = accountPasswordSchema.safeParse(input);
     if (!parsed.success) {
       return { ok: false as const, message: parsed.error.issues[0]?.message ?? "Мэдээллээ шалгана уу." };

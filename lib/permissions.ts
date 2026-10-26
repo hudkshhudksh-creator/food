@@ -1,13 +1,13 @@
-import type { Permission } from "@/types";
+import { ADMIN_NAV } from "@/lib/constants";
+import type { Permission, PermissionGroup } from "@/types";
 
 const COOK = [
   { key: "dashboard", label: "Хянах самбар" },
-  { key: "meals", label: "Хоол нэмэх, засах" },
-  { key: "orders", label: "Захиалга харах, батлах" },
-  { key: "branches", label: "Салбар удирдах" },
-  { key: "reports", label: "Тайлан харах" },
+  { key: "meals", label: "Өнөөдрийн хоол, хоол нэмэх" },
+  { key: "orders", label: "Захиалгууд" },
+  { key: "branches", label: "Салбарууд" },
+  { key: "reports", label: "Тайлан" },
   { key: "settings", label: "Тохиргоо" },
-  { key: "rights", label: "Эрх тохируулах" },
 ] as const;
 
 const EMPLOYEE = [
@@ -37,6 +37,14 @@ export function defaultPermissions(): Permission[] {
   ];
 }
 
+export function enabledKeys(permissions: Permission[], group: PermissionGroup) {
+  return new Set(
+    permissions
+      .filter((item) => item.group === group && item.enabled && item.key !== "rights")
+      .map((item) => item.key),
+  );
+}
+
 export function permissionForAdminPath(pathname: string) {
   if (pathname === "/admin") return "dashboard";
   if (pathname.startsWith("/admin/meals")) return "meals";
@@ -44,24 +52,16 @@ export function permissionForAdminPath(pathname: string) {
   if (pathname.startsWith("/admin/branches")) return "branches";
   if (pathname.startsWith("/admin/reports")) return "reports";
   if (pathname.startsWith("/admin/settings")) return "settings";
-  if (pathname.startsWith("/admin/rights")) return null;
+  if (pathname.startsWith("/admin/rights")) return "rights";
   return "dashboard";
 }
 
-const COOK_PAGES = [
-  ["dashboard", "/admin"],
-  ["meals", "/admin/meals"],
-  ["orders", "/admin/orders"],
-  ["branches", "/admin/branches"],
-  ["reports", "/admin/reports"],
-  ["settings", "/admin/settings"],
-  ["rights", "/admin/rights"],
-] as const;
-
 export function firstCookPath(enabled: Set<string>) {
-  return COOK_PAGES.find((item) => enabled.has(item[0]))?.[1] ?? "/admin/meals";
+  return ADMIN_NAV.find((item) => item.permission !== "rights" && enabled.has(item.permission))?.href ?? "/admin/meals";
 }
 
-export function isCookPanelPath(pathname: string) {
-  return pathname.startsWith("/admin/meals") || pathname.startsWith("/admin/orders");
+export function isCookPanelPath(pathname: string, enabled: Set<string>) {
+  const needed = permissionForAdminPath(pathname);
+  if (!needed || needed === "rights") return false;
+  return enabled.has(needed);
 }

@@ -14,9 +14,11 @@ const controlClass = "h-11 rounded-xl";
 export function SettingsForms({
   user,
   settings,
+  canEditSystem = true,
 }: {
   user: SessionUser;
   settings: AppSettings;
+  canEditSystem?: boolean;
 }) {
   const router = useRouter();
   const [pending, startTransition] = useTransition();
@@ -102,20 +104,22 @@ export function SettingsForms({
           Хадгалах
         </Button>
       </form>
-      <form action={saveSettings} className="surface space-y-4 rounded-2xl p-5">
-        <h2 className="text-base font-semibold">Систем</h2>
-        <div className="grid gap-2">
-          <Label htmlFor="companyName">Байгууллагын нэр</Label>
-          <Input id="companyName" name="companyName" defaultValue={settings.companyName} className={controlClass} />
-        </div>
-        <div className="grid gap-2">
-          <Label htmlFor="supportPhone">Тусламжийн утас</Label>
-          <Input id="supportPhone" name="supportPhone" defaultValue={settings.supportPhone} className={controlClass} />
-        </div>
-        <Button type="submit" disabled={pending} className="h-11 rounded-xl">
-          Хадгалах
-        </Button>
-      </form>
+      {canEditSystem ? (
+        <form action={saveSettings} className="surface space-y-4 rounded-2xl p-5">
+          <h2 className="text-base font-semibold">Систем</h2>
+          <div className="grid gap-2">
+            <Label htmlFor="companyName">Байгууллагын нэр</Label>
+            <Input id="companyName" name="companyName" defaultValue={settings.companyName} className={controlClass} />
+          </div>
+          <div className="grid gap-2">
+            <Label htmlFor="supportPhone">Тусламжийн утас</Label>
+            <Input id="supportPhone" name="supportPhone" defaultValue={settings.supportPhone} className={controlClass} />
+          </div>
+          <Button type="submit" disabled={pending} className="h-11 rounded-xl">
+            Хадгалах
+          </Button>
+        </form>
+      ) : null}
     </div>
   );
 }

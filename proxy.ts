@@ -52,7 +52,7 @@ async function updateLocalSession(request: NextRequest) {
 
   if (session && isLogin) {
     const url = request.nextUrl.clone();
-    url.pathname = session.role === "admin" ? panel : session.role === "cook" ? `${panel}/meals` : "/";
+    url.pathname = session.role === "employee" ? "/" : panel;
     url.search = "";
     return NextResponse.redirect(url);
   }

@@ -187,8 +187,9 @@ export function RightsManager({
       <div className="grid gap-6 lg:grid-cols-2">
         <PermissionColumn
           title="Тогоочийн эрх"
+          description="Админ самбарын цэсүүд. Асаасан цэс тогоочид харагдана."
           group="cook"
-          permissions={permissions.filter((item) => item.group === "cook")}
+          permissions={permissions.filter((item) => item.group === "cook" && item.key !== "rights")}
           pending={pending}
           onToggle={(id, enabled) => run(() => setPermissionEnabledAction(id, enabled), "Эрх шинэчлэгдлээ.")}
           onRemove={(id) => run(() => removePermissionAction(id), "Эрх хасагдлаа.")}
@@ -196,6 +197,7 @@ export function RightsManager({
         />
         <PermissionColumn
           title="Хэрэглэгчийн эрх"
+          description="Ажилтны нүүр хуудас, захиалга хийх эрх."
           group="employee"
           permissions={permissions.filter((item) => item.group === "employee")}
           pending={pending}
@@ -233,6 +235,7 @@ export function RightsManager({
 
 function PermissionColumn({
   title,
+  description,
   group,
   permissions,
   pending,
@@ -241,6 +244,7 @@ function PermissionColumn({
   onAdd,
 }: {
   title: string;
+  description: string;
   group: PermissionGroup;
   permissions: Permission[];
   pending: boolean;
@@ -252,25 +256,25 @@ function PermissionColumn({
   return (
     <section className="surface rounded-2xl p-5">
       <h2 className="text-base font-semibold">{title}</h2>
+      <p className="mt-1 text-sm text-slate-500">{description}</p>
       <ul className="mt-4 grid gap-2">
         {permissions.map((permission) => {
-          const locked = group === "cook" && permission.key === "rights";
           return (
             <li key={permission.id} className="flex items-center justify-between gap-3 rounded-xl bg-slate-50 px-3 py-2">
               <span className="text-sm font-medium text-slate-800">{permission.label}</span>
               <span className="flex items-center gap-2">
                 <button
                   type="button"
-                  disabled={pending || locked}
-                  aria-pressed={permission.enabled || locked}
+                  disabled={pending}
+                  aria-pressed={permission.enabled}
                   onClick={() => onToggle(permission.id, !permission.enabled)}
                   className={
-                    permission.enabled || locked
+                    permission.enabled
                       ? "rounded-full bg-blue-500 px-3 py-1 text-xs font-medium text-white"
                       : "rounded-full bg-white px-3 py-1 text-xs font-medium text-slate-500 ring-1 ring-slate-200"
                   }
                 >
-                  {permission.enabled || locked ? "Асаалттай" : "Унтраалттай"}
+                  {permission.enabled ? "Асаалттай" : "Унтраалттай"}
                 </button>
                 {permission.builtin ? null : (
                   <button type="button" disabled={pending} onClick={() => onRemove(permission.id)} className="text-xs text-red-600">

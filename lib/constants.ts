@@ -66,12 +66,6 @@ export const ADMIN_NAV = [
   { href: "/admin/settings", label: "Тохиргоо", icon: "settings", permission: "settings" },
 ] as const;
 
-export const COOK_NAV = [
-  { href: "/admin/meals", label: "Өнөөдрийн хоол", icon: "meal", permission: "meals" },
-  { href: "/admin/meals/new", label: "Хоол нэмэх", icon: "plus", permission: "meals" },
-  { href: "/admin/orders", label: "Захиалгууд", icon: "orders", permission: "orders" },
-] as const;
-
 export const EMPLOYEE_NAV = [
   { href: "/", label: "Өнөөдрийн хоол", icon: "meal", permission: "view_menu" },
   { href: "/my-orders", label: "Миний захиалга", icon: "orders", permission: "view_orders" },

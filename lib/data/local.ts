@@ -117,9 +117,15 @@ function normalize(store: StoreData) {
     changed = true;
   } else {
     for (const item of defaultPermissions()) {
-      const exists = store.permissions.some((permission) => permission.group === item.group && permission.key === item.key);
-      if (!exists) {
+      const existing = store.permissions.find(
+        (permission) => permission.group === item.group && permission.key === item.key,
+      );
+      if (!existing) {
         store.permissions.push(item);
+        changed = true;
+      } else if (existing.label !== item.label) {
+        existing.label = item.label;
+        existing.builtin = true;
         changed = true;
       }
     }
@@ -431,7 +437,6 @@ export async function setPermissionEnabled(id: string, enabled: boolean) {
     const store = await read();
     const permission = store.permissions.find((item) => item.id === id);
     if (!permission) throw new AppError("FORBIDDEN");
-    if (permission.group === "cook" && permission.key === "rights" && !enabled) return permission;
     permission.enabled = enabled;
     await persist(store);
     return permission;

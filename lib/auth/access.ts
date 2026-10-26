@@ -1,13 +1,18 @@
 import { AppError } from "@/lib/errors";
 import { requireAdmin, requireStaff, requireUser } from "@/lib/auth/current-user";
 import { getPermissions } from "@/lib/data";
+import { enabledKeys } from "@/lib/permissions";
 
-const COOK_KEYS = new Set(["meals", "orders"]);
+const ADMIN_ONLY = new Set(["rights"]);
+
+export async function cookEnabledSet() {
+  return enabledKeys(await getPermissions(), "cook");
+}
 
 export async function cookAllowed(permission: string) {
-  const permissions = await getPermissions();
-  const item = permissions.find((permissionItem) => permissionItem.group === "cook" && permissionItem.key === permission);
-  return item ? item.enabled : false;
+  if (ADMIN_ONLY.has(permission)) return false;
+  const enabled = await cookEnabledSet();
+  return enabled.has(permission);
 }
 
 export async function employeeAllowed(permission: string) {
@@ -19,7 +24,7 @@ export async function employeeAllowed(permission: string) {
 }
 
 export async function requireCook(permission: string) {
-  if (!COOK_KEYS.has(permission)) {
+  if (ADMIN_ONLY.has(permission)) {
     return requireAdmin();
   }
   const user = await requireStaff();

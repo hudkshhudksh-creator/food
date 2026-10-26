@@ -11,7 +11,7 @@ const STATUSES = new Set(["new", "confirmed", "preparing", "ready", "received", 
 
 export async function GET(request: Request) {
   const user = await getCurrentUser();
-  if (!user || user.role !== "admin" || !(await cookAllowed("reports"))) {
+  if (!user || (user.role !== "admin" && user.role !== "cook") || !(await cookAllowed("reports"))) {
     return new Response("Эрх хүрэлцэхгүй.", { status: 401 });
   }
 

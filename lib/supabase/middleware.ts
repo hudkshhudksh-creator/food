@@ -79,7 +79,7 @@ export async function updateSupabaseSession(request: NextRequest) {
 
   if (user && isLogin) {
     const redirectUrl = request.nextUrl.clone();
-    redirectUrl.pathname = role === "admin" ? panel : role === "cook" ? `${panel}/meals` : "/";
+    redirectUrl.pathname = role === "employee" ? "/" : panel;
     redirectUrl.search = "";
     return NextResponse.redirect(redirectUrl);
   }
