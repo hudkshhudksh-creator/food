@@ -32,9 +32,16 @@ export const mealSchema = z.object({
     .max(2000)
     .optional()
     .or(z.literal(""))
-    .refine((value) => !value || value.startsWith("/") || /^https?:\/\//.test(value), {
-      message: "Зургийн холбоос буруу байна.",
-    }),
+    .refine(
+      (value) =>
+        !value ||
+        value.startsWith("/") ||
+        value.startsWith("data:image/") ||
+        /^https?:\/\//.test(value),
+      {
+        message: "Зургийн холбоос буруу байна.",
+      },
+    ),
   price: z.coerce
     .number({ invalid_type_error: "Үнэ оруулна уу." })
     .int("Үнэ бүхэл тоо байна.")
