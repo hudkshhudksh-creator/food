@@ -373,7 +373,7 @@ export async function setAccountRole(_actorId: string, userId: string, role: Rol
   return locked(async () => {
     const store = await read();
     const profile = store.profiles.find((item) => item.userId === userId);
-    if (!profile) throw new AppError("UNAUTHORIZED");
+    if (!profile) throw new AppError("ACCOUNT_NOT_FOUND");
     if (role === "admin") throw new AppError("FORBIDDEN");
     if (profile.role === "admin") throw new AppError("LAST_ADMIN");
     profile.role = role;
@@ -385,7 +385,7 @@ export async function setAccountPassword(userId: string, password: string) {
   return locked(async () => {
     const store = await read();
     const user = store.users.find((item) => item.id === userId);
-    if (!user) throw new AppError("UNAUTHORIZED");
+    if (!user) throw new AppError("ACCOUNT_NOT_FOUND");
     user.passwordHash = hashPassword(password);
     await persist(store);
   });
@@ -396,7 +396,7 @@ export async function deleteAccount(actorId: string, userId: string) {
     const store = await read();
     if (actorId === userId) throw new AppError("FORBIDDEN");
     const profile = store.profiles.find((item) => item.userId === userId);
-    if (!profile) throw new AppError("UNAUTHORIZED");
+    if (!profile) throw new AppError("ACCOUNT_NOT_FOUND");
     if (profile.role === "admin" && store.profiles.filter((item) => item.role === "admin").length <= 1) {
       throw new AppError("LAST_ADMIN");
     }
