@@ -64,7 +64,7 @@ function locked<T>(fn: () => Promise<T>): Promise<T> {
   return run;
 }
 
-async function persist(store: StoreData) {
+async function persist(store: StoreData, options?: { requireCloud?: boolean }) {
   memory = store;
   for (const target of storePaths()) {
     try {
@@ -77,9 +77,11 @@ async function persist(store: StoreData) {
   }
   try {
     const { saveCloudStore } = await import("@/lib/data/cloud-store");
-    await saveCloudStore(store);
-  } catch {
-    // Cloud copy is optional; local memory still holds the change.
+    const saved = await saveCloudStore(store);
+    if (options?.requireCloud && process.env.VERCEL && !saved) throw new AppError("STORE_UNAVAILABLE");
+  } catch (error) {
+    if (error instanceof AppError) throw error;
+    if (options?.requireCloud && process.env.VERCEL) throw new AppError("STORE_UNAVAILABLE");
   }
 }
 
@@ -152,7 +154,7 @@ async function read(): Promise<StoreData> {
   const seeded = buildSeed();
   const fromEnv = envAdminSecret();
   if (fromEnv) seeded.settings.adminSecret = fromEnv;
-  await persist(seeded);
+  memory = seeded;
   return seeded;
 }
 
@@ -364,7 +366,21 @@ export async function createAccount(input: AccountInput) {
       branchId: input.branchId || null,
       createdAt: now,
     });
-    await persist(store);
+    await persist(store, { requireCloud: true });
+    try {
+      const { provisionAuthUser } = await import("@/lib/data/cloud-store");
+      await provisionAuthUser({
+        email,
+        password: input.password,
+        firstName: input.firstName.trim(),
+        lastName: input.lastName.trim(),
+        phone: input.phone,
+        role: input.role,
+        branchId: input.branchId,
+      });
+    } catch {
+      // Local account still works if Auth provisioning is unavailable.
+    }
     return userId;
   });
 }
@@ -377,7 +393,7 @@ export async function setAccountRole(_actorId: string, userId: string, role: Rol
     if (role === "admin") throw new AppError("FORBIDDEN");
     if (profile.role === "admin") throw new AppError("LAST_ADMIN");
     profile.role = role;
-    await persist(store);
+    await persist(store, { requireCloud: true });
   });
 }
 
@@ -387,7 +403,7 @@ export async function setAccountPassword(userId: string, password: string) {
     const user = store.users.find((item) => item.id === userId);
     if (!user) throw new AppError("ACCOUNT_NOT_FOUND");
     user.passwordHash = hashPassword(password);
-    await persist(store);
+    await persist(store, { requireCloud: true });
   });
 }
 
@@ -402,7 +418,7 @@ export async function deleteAccount(actorId: string, userId: string) {
     }
     store.users = store.users.filter((user) => user.id !== userId);
     store.profiles = store.profiles.filter((item) => item.userId !== userId);
-    await persist(store);
+    await persist(store, { requireCloud: true });
   });
 }
 

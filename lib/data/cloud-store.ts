@@ -59,12 +59,76 @@ export async function loadCloudStore(): Promise<StoreData | null> {
     return rows[0]?.data ?? null;
   }).catch(() => null);
   if (fromPg?.users?.length) return fromPg;
+  const fromBlob = await loadBlobStore();
+  if (fromBlob?.users?.length) return fromBlob;
 
   const admin = createAdminClient();
   if (!admin) return fromPg;
   const { data, error } = await admin.from(TABLE).select("data").eq("id", 1).maybeSingle();
   if (error || !data?.data || typeof data.data !== "object") return fromPg;
   return data.data as StoreData;
+}
+
+async function loadBlobStore(): Promise<StoreData | null> {
+  const token = process.env.BLOB_READ_WRITE_TOKEN;
+  if (!token) return null;
+  try {
+    const { list } = await import("@vercel/blob");
+    const { blobs } = await list({ prefix: "food-store.json", token, limit: 5 });
+    const blob = blobs[0];
+    if (!blob) return null;
+    const res = await fetch(blob.url);
+    if (!res.ok) return null;
+    return (await res.json()) as StoreData;
+  } catch {
+    return null;
+  }
+}
+
+async function saveBlobStore(store: StoreData) {
+  const token = process.env.BLOB_READ_WRITE_TOKEN;
+  if (!token) return false;
+  try {
+    const { put } = await import("@vercel/blob");
+    await put("food-store.json", JSON.stringify(store), {
+      access: "private",
+      token,
+      addRandomSuffix: false,
+      allowOverwrite: true,
+    });
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+export async function provisionAuthUser(input: {
+  email: string;
+  password: string;
+  firstName: string;
+  lastName: string;
+  phone?: string;
+  role: string;
+  branchId?: string;
+}) {
+  const admin = createAdminClient();
+  const email = input.email.trim().toLowerCase();
+  if (admin) {
+    const { error } = await admin.auth.admin.createUser({
+      email,
+      password: input.password,
+      email_confirm: true,
+      user_metadata: {
+        first_name: input.firstName,
+        last_name: input.lastName,
+        phone: input.phone ?? "",
+        role: input.role,
+        branch_id: input.branchId ?? "",
+      },
+    });
+    if (error && !/already|registered|exists/i.test(error.message)) throw error;
+    return;
+  }
 }
 
 export async function saveCloudStore(store: StoreData) {
@@ -80,14 +144,16 @@ export async function saveCloudStore(store: StoreData) {
     `;
     return true;
   }).catch(() => false);
-  if (saved) return;
+  if (saved) return true;
+  if (await saveBlobStore(store)) return true;
 
   const admin = createAdminClient();
-  if (!admin) return;
+  if (!admin) return false;
   const { error } = await admin.from(TABLE).upsert({
     id: 1,
     data: store,
     updated_at: new Date().toISOString(),
   });
-  if (error) throw error;
+  if (error) return false;
+  return true;
 }

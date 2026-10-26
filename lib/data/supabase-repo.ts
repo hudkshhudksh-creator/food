@@ -158,15 +158,17 @@ export async function getSupabaseUser(): Promise<SessionUser | null> {
     data: { user },
   } = await supabase.auth.getUser();
   if (!user) return null;
+  const meta = user.user_metadata ?? {};
   const { data: profile } = await supabase.from("profiles").select("*").eq("user_id", user.id).maybeSingle();
+  const rawRole = profile?.role || meta.role;
   return {
     id: user.id,
     email: user.email ?? "",
-    role: profile?.role === "admin" ? "admin" : profile?.role === "cook" ? "cook" : "employee",
-    firstName: profile?.first_name ?? "",
-    lastName: profile?.last_name ?? "",
-    phone: profile?.phone ?? "",
-    branchId: profile?.branch_id ?? null,
+    role: rawRole === "admin" ? "admin" : rawRole === "cook" ? "cook" : "employee",
+    firstName: profile?.first_name || meta.first_name || "",
+    lastName: profile?.last_name || meta.last_name || "",
+    phone: profile?.phone || meta.phone || "",
+    branchId: profile?.branch_id || meta.branch_id || null,
   };
 }
 

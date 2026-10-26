@@ -92,30 +92,26 @@ export async function loginAction(input: { email: string; password: string; next
       email: parsed.data.email,
       password: parsed.data.password,
     });
-    if (error) return { ok: false as const, message: "Имэйл эсвэл нууц үг буруу байна." };
-    const { data: userData } = await supabase.auth.getUser();
-    const { data: profile } = await supabase
-      .from("profiles")
-      .select("role")
-      .eq("user_id", userData.user?.id ?? "")
-      .maybeSingle();
-    const role: Role = profile?.role === "admin" ? "admin" : profile?.role === "cook" ? "cook" : "employee";
-    if (input.audience === "cook" && role !== "admin" && role !== "cook") {
-      await supabase.auth.signOut();
-      return { ok: false as const, message: "Энэ хаяг зөвхөн админ, тогоочид зориулагдсан." };
+    if (!error) {
+      const { data: userData } = await supabase.auth.getUser();
+      const meta = userData.user?.user_metadata ?? {};
+      const { data: profile } = await supabase
+        .from("profiles")
+        .select("role")
+        .eq("user_id", userData.user?.id ?? "")
+        .maybeSingle();
+      const rawRole = profile?.role || meta.role;
+      const role: Role = rawRole === "admin" ? "admin" : rawRole === "cook" ? "cook" : "employee";
+      if (input.audience === "cook" && role === "employee") {
+        await supabase.auth.signOut();
+        return { ok: false as const, message: "Энэ хаяг ажилтны бүртгэл. Нүүр хуудсаар нэвтэрнэ үү." };
+      }
+      redirect(await safeNext(input.next, role));
     }
-    if (input.audience !== "cook" && (role === "admin" || role === "cook")) {
-      await supabase.auth.signOut();
-      return { ok: false as const, message: "Энэ нэвтрэлтээр тогоочийн самбарт орохгүй." };
-    }
-    redirect(await safeNext(input.next, role));
   }
   if (!user) return { ok: false as const, message: "Имэйл эсвэл нууц үг буруу байна." };
-  if (input.audience === "cook" && user.role !== "admin" && user.role !== "cook") {
-    return { ok: false as const, message: "Энэ хаяг зөвхөн админ, тогоочид зориулагдсан." };
-  }
-  if (input.audience !== "cook" && (user.role === "admin" || user.role === "cook")) {
-    return { ok: false as const, message: "Энэ нэвтрэлтээр админ, тогоочийн самбарт орохгүй." };
+  if (input.audience === "cook" && user.role === "employee") {
+    return { ok: false as const, message: "Энэ хаяг ажилтны бүртгэл. Нүүр хуудсаар нэвтэрнэ үү." };
   }
   await createSession(user);
   redirect(await safeNext(input.next, user.role));
