@@ -20,7 +20,8 @@ export default async function LoginPage({
       <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(ellipse_at_top,rgba(59,130,246,0.16),transparent_52%),linear-gradient(180deg,#eef3f9_0%,#f5f7fb_46%,#ffffff_100%)]" />
       <div className="pointer-events-none absolute -top-24 left-1/2 size-[28rem] -translate-x-1/2 rounded-full bg-blue-400/10 blur-3xl" />
       <div className="relative z-10 w-full max-w-5xl">
-        <div className="grid items-center gap-10 lg:grid-cols-[1.05fr_0.95fr]">
+        <div className="grid items-center gap-10 lg:grid-cols-[0.95fr_1.05fr]">
+          <LoginForm next={params.next} showDemo={isDemoLoginVisible()} audience={audience} branches={branches} />
           <div className="hidden px-4 lg:block">
             <p className="text-sm font-semibold tracking-[0.18em] text-blue-600">ӨДРИЙН ХООЛ</p>
             <h1 className="mt-4 max-w-md text-4xl font-semibold tracking-tight text-slate-900">
@@ -44,7 +45,6 @@ export default async function LoginPage({
               </li>
             </ul>
           </div>
-          <LoginForm next={params.next} showDemo={isDemoLoginVisible()} audience={audience} branches={branches} />
         </div>
       </div>
     </main>

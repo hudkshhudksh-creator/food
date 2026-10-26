@@ -66,6 +66,13 @@ export async function proxy(request: NextRequest) {
     return withCookies(NextResponse.next({ request: { headers } }), supabaseResponse);
   }
 
+  if (!role && pathname === "/") {
+    const url = request.nextUrl.clone();
+    url.pathname = "/login";
+    url.search = "";
+    return withCookies(NextResponse.rewrite(url), supabaseResponse);
+  }
+
   if (!role && !isLogin) {
     return withCookies(redirectTo(request, "/login", pathname), supabaseResponse);
   }
