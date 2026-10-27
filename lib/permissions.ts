@@ -6,7 +6,6 @@ const COOK = [
   { key: "meals", label: "Өнөөдрийн хоол, хоол нэмэх" },
   { key: "orders", label: "Захиалгууд" },
   { key: "branches", label: "Салбарууд" },
-  { key: "reports", label: "Тайлан" },
   { key: "settings", label: "Тохиргоо" },
 ] as const;
 
@@ -40,7 +39,7 @@ export function defaultPermissions(): Permission[] {
 export function enabledKeys(permissions: Permission[], group: PermissionGroup) {
   return new Set(
     permissions
-      .filter((item) => item.group === group && item.enabled && item.key !== "rights")
+      .filter((item) => item.group === group && item.enabled && item.key !== "rights" && item.key !== "reports")
       .map((item) => item.key),
   );
 }
@@ -57,11 +56,15 @@ export function permissionForAdminPath(pathname: string) {
 }
 
 export function firstCookPath(enabled: Set<string>) {
-  return ADMIN_NAV.find((item) => item.permission !== "rights" && enabled.has(item.permission))?.href ?? "/admin/meals";
+  return (
+    ADMIN_NAV.find(
+      (item) => item.permission !== "rights" && item.permission !== "reports" && enabled.has(item.permission),
+    )?.href ?? "/admin/meals"
+  );
 }
 
 export function isCookPanelPath(pathname: string, enabled: Set<string>) {
   const needed = permissionForAdminPath(pathname);
-  if (!needed || needed === "rights") return false;
+  if (!needed || needed === "rights" || needed === "reports") return false;
   return enabled.has(needed);
 }

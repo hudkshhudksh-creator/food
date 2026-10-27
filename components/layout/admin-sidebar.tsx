@@ -46,7 +46,7 @@ function isActive(href: string, pathname: string, secret: string) {
 function navItems(role: SessionUser["role"], allowed: string[]) {
   return ADMIN_NAV.filter((item) => {
     if (role === "admin") return true;
-    if (item.permission === "rights") return false;
+    if (item.permission === "rights" || item.permission === "reports") return false;
     return allowed.includes(item.permission);
   });
 }

@@ -1,4 +1,3 @@
-import { cookAllowed } from "@/lib/auth/access";
 import { getCurrentUser } from "@/lib/auth/current-user";
 import { ordersToCsv } from "@/lib/csv";
 import { getOrders } from "@/lib/data";
@@ -11,7 +10,7 @@ const STATUSES = new Set(["new", "confirmed", "preparing", "ready", "received", 
 
 export async function GET(request: Request) {
   const user = await getCurrentUser();
-  if (!user || (user.role !== "admin" && user.role !== "cook") || !(await cookAllowed("reports"))) {
+  if (!user || user.role !== "admin") {
     return new Response("Эрх хүрэлцэхгүй.", { status: 401 });
   }
 

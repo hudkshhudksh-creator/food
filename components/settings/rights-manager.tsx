@@ -189,7 +189,7 @@ export function RightsManager({
           title="Тогоочийн эрх"
           description="Админ самбарын цэсүүд. Асаасан цэс тогоочид харагдана."
           group="cook"
-          permissions={permissions.filter((item) => item.group === "cook" && item.key !== "rights")}
+          permissions={permissions.filter((item) => item.group === "cook" && item.key !== "rights" && item.key !== "reports")}
           pending={pending}
           onToggle={(id, enabled) => run(() => setPermissionEnabledAction(id, enabled), "Эрх шинэчлэгдлээ.")}
           onRemove={(id) => run(() => removePermissionAction(id), "Эрх хасагдлаа.")}

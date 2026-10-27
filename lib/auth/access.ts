@@ -3,7 +3,7 @@ import { requireAdmin, requireStaff, requireUser } from "@/lib/auth/current-user
 import { getPermissions } from "@/lib/data";
 import { enabledKeys } from "@/lib/permissions";
 
-const ADMIN_ONLY = new Set(["rights"]);
+const ADMIN_ONLY = new Set(["rights", "reports"]);
 
 export async function cookEnabledSet() {
   return enabledKeys(await getPermissions(), "cook");

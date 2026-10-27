@@ -1,7 +1,9 @@
 import Link from "next/link";
+import { redirect } from "next/navigation";
 import { ReportCharts } from "@/components/dashboard/report-charts";
 import { PageHeader } from "@/components/shared/page-header";
 import { Button } from "@/components/ui/button";
+import { getCurrentUser } from "@/lib/auth/current-user";
 import { getAdminSecret, getReport } from "@/lib/data";
 import { panelHref } from "@/lib/panel-path";
 import { formatMoney, formatMongolianDate } from "@/lib/format";
@@ -20,6 +22,8 @@ export default async function ReportsPage({
 }: {
   searchParams: Promise<{ range?: string }>;
 }) {
+  const user = await getCurrentUser();
+  if (!user || user.role !== "admin") redirect("/");
   const params = await searchParams;
   const range = params.range === "week" || params.range === "month" ? params.range : "day";
   const [report, secret] = await Promise.all([getReport(range), getAdminSecret()]);
