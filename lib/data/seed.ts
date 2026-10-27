@@ -90,5 +90,6 @@ export function buildSeed(): StoreData {
       adminSecret: DEFAULT_ADMIN_SECRET,
     },
     permissions: defaultPermissions(),
+    adjustments: [],
   };
 }

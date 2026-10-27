@@ -1,6 +1,6 @@
 import * as local from "@/lib/data/local";
 import * as remote from "@/lib/data/supabase-repo";
-import type { AccountInput, BranchInput, MealInput, OrderQuery, OrderStatus, PermissionGroup, PlaceOrderInput, Role } from "@/types";
+import type { AccountInput, BranchInput, DailyAdjustment, MealInput, OrderQuery, OrderStatus, PermissionGroup, PlaceOrderInput, Role } from "@/types";
 
 function remoteMode() {
   // Account, meal, and order data live in the JSON store so admin can add
@@ -88,6 +88,16 @@ export async function fulfillOrder(orderId: string, given: { itemId: string; qua
 
 export async function getDashboard(date?: string) {
   return remoteMode() ? remote.getDashboard(date) : local.getDashboard(date);
+}
+
+export async function saveDailyAdjustment(input: DailyAdjustment) {
+  if (remoteMode()) throw new Error("FORBIDDEN");
+  return local.saveDailyAdjustment(input);
+}
+
+export async function clearDailyAdjustment(date: string) {
+  if (remoteMode()) throw new Error("FORBIDDEN");
+  return local.clearDailyAdjustment(date);
 }
 
 export async function getReport(range: "day" | "week" | "month") {

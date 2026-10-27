@@ -127,6 +127,15 @@ export const settingsSchema = z.object({
     .refine((value) => value === "" || isMnPhone(value), "Утасны дугаар буруу байна."),
 });
 
+export const dailyAdjustmentSchema = z.object({
+  date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, "Огноо оруулна уу."),
+  totalOrders: z.coerce.number().int().min(0).max(100000),
+  totalPortions: z.coerce.number().int().min(0).max(1000000),
+  givenPortions: z.coerce.number().int().min(0).max(1000000),
+  totalRevenue: z.coerce.number().int().min(0).max(100_000_000),
+  activeMeals: z.coerce.number().int().min(0).max(10000),
+});
+
 export const fulfillOrderSchema = z.object({
   orderId: z.string().uuid("Захиалга олдсонгүй."),
   items: z

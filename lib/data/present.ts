@@ -2,6 +2,7 @@ import { eachDate, formatMonthLabel, formatShortDate, todayInUlaanbaatar, toUlaa
 import type {
   Branch,
   BranchStat,
+  DailyAdjustment,
   DailyPoint,
   Meal,
   MealStat,
@@ -131,6 +132,46 @@ export function summarize(views: OrderView[]) {
     givenPortions: active.reduce((sum, order) => sum + orderGivenPortions(order), 0),
     totalRevenue: active.reduce((sum, order) => sum + orderRevenue(order), 0),
   };
+}
+
+export function applyDailyAdjustment<
+  T extends { totalOrders: number; totalPortions: number; givenPortions: number; totalRevenue: number },
+>(base: T, adjustment?: DailyAdjustment | null): T {
+  if (!adjustment) return base;
+  return {
+    ...base,
+    totalOrders: adjustment.totalOrders ?? base.totalOrders,
+    totalPortions: adjustment.totalPortions ?? base.totalPortions,
+    givenPortions: adjustment.givenPortions ?? base.givenPortions,
+    totalRevenue: adjustment.totalRevenue ?? base.totalRevenue,
+  };
+}
+
+export function overlayMonthly(points: MonthlyPoint[], views: OrderView[], adjustments: DailyAdjustment[]) {
+  for (const adjustment of adjustments) {
+    const key = adjustment.date.slice(0, 7);
+    const point = points.find((item) => item.month === key);
+    if (!point) continue;
+    const raw = summarize(views.filter((order) => toUlaanbaatarDate(order.createdAt) === adjustment.date));
+    const next = applyDailyAdjustment(raw, adjustment);
+    point.orders += next.totalOrders - raw.totalOrders;
+    point.givenPortions += next.givenPortions - raw.givenPortions;
+    point.revenue += next.totalRevenue - raw.totalRevenue;
+  }
+  return points;
+}
+
+export function overlayDaily(points: DailyPoint[], adjustments: DailyAdjustment[]) {
+  return points.map((point) => {
+    const adjustment = adjustments.find((item) => item.date === point.date);
+    if (!adjustment) return point;
+    return {
+      ...point,
+      orders: adjustment.totalOrders ?? point.orders,
+      portions: adjustment.givenPortions ?? point.portions,
+      revenue: adjustment.totalRevenue ?? point.revenue,
+    };
+  });
 }
 
 export function dailySeries(views: OrderView[], from: string, to: string): DailyPoint[] {

@@ -1,10 +1,11 @@
-import { ClipboardList, HandPlatter, Utensils, Wallet } from "lucide-react";
+import { DailyStatsEditor } from "@/components/dashboard/daily-stats-editor";
 import { BranchSummary } from "@/components/orders/branch-summary";
 import { OrderActions } from "@/components/orders/order-actions";
 import { StatusBadge } from "@/components/shared/status-badge";
 import { PageHeader } from "@/components/shared/page-header";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
+import { getCurrentUser } from "@/lib/auth/current-user";
 import { getAdminSecret, getDashboard } from "@/lib/data";
 import { portionLabel } from "@/lib/data/present";
 import { panelHref } from "@/lib/panel-path";
@@ -19,14 +20,7 @@ export default async function DashboardPage({
 }) {
   const params = await searchParams;
   const date = params.date && /^\d{4}-\d{2}-\d{2}$/.test(params.date) ? params.date : todayInUlaanbaatar();
-  const [stats, secret] = await Promise.all([getDashboard(date), getAdminSecret()]);
-  const cards = [
-    { label: "Нийт захиалга", value: String(stats.totalOrders), icon: ClipboardList },
-    { label: "Захиалсан порц", value: String(stats.totalPortions), icon: HandPlatter },
-    { label: "Өгсөн порц", value: String(stats.givenPortions), icon: HandPlatter },
-    { label: "Орлого", value: formatMoney(stats.totalRevenue), icon: Wallet },
-    { label: "Идэвхтэй хоол", value: String(stats.activeMeals), icon: Utensils },
-  ];
+  const [stats, secret, user] = await Promise.all([getDashboard(date), getAdminSecret(), getCurrentUser()]);
 
   return (
     <div className="space-y-6">
@@ -42,19 +36,17 @@ export default async function DashboardPage({
           </form>
         }
       />
-      <section className="grid gap-4 sm:grid-cols-2 xl:grid-cols-5">
-        {cards.map((card) => (
-          <article key={card.label} className="surface rounded-2xl p-5">
-            <div className="flex items-center justify-between">
-              <p className="text-sm text-slate-500">{card.label}</p>
-              <span className="flex size-10 items-center justify-center rounded-xl bg-blue-50 text-blue-600">
-                <card.icon className="size-4" />
-              </span>
-            </div>
-            <p className="mt-4 text-[1.75rem] font-semibold tracking-tight text-slate-900">{card.value}</p>
-          </article>
-        ))}
-      </section>
+      <DailyStatsEditor
+        date={date}
+        canEdit={user?.role === "admin"}
+        stats={{
+          totalOrders: stats.totalOrders,
+          totalPortions: stats.totalPortions,
+          givenPortions: stats.givenPortions,
+          totalRevenue: stats.totalRevenue,
+          activeMeals: stats.activeMeals,
+        }}
+      />
       <section className="surface overflow-hidden rounded-2xl">
         <div className="border-b border-slate-100 px-5 py-4">
           <h2 className="font-semibold text-slate-900">Сарын тойм</h2>

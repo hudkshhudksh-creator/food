@@ -17,6 +17,9 @@ import {
   branchStats,
   dailySeries,
   monthlySeries,
+  applyDailyAdjustment,
+  overlayDaily,
+  overlayMonthly,
   summarize,
   toOrderViews,
   topMeals,
@@ -26,6 +29,7 @@ import type {
   AppSettings,
   Branch,
   BranchInput,
+  DailyAdjustment,
   DashboardStats,
   Meal,
   MealInput,
@@ -110,6 +114,10 @@ function normalize(store: StoreData) {
   }
   if (!isValidAdminSecret(store.settings.adminSecret ?? "")) {
     store.settings.adminSecret = DEFAULT_ADMIN_SECRET;
+    changed = true;
+  }
+  if (!Array.isArray(store.adjustments)) {
+    store.adjustments = [];
     changed = true;
   }
   if (!Array.isArray(store.permissions)) {
@@ -845,15 +853,45 @@ export async function getDashboard(date = todayInUlaanbaatar()): Promise<Dashboa
   return locked(async () => {
     const store = await read();
     const dayOrders = filterOrders(store, { date });
-    const totals = summarize(dayOrders);
+    const adjustment = (store.adjustments ?? []).find((item) => item.date === date);
+    const totals = applyDailyAdjustment(summarize(dayOrders), adjustment);
+    const allViews = viewsOf(store);
     return {
       date,
       ...totals,
-      activeMeals: store.meals.filter((meal) => meal.mealDate === date && meal.isActive).length,
+      activeMeals: adjustment?.activeMeals ?? store.meals.filter((meal) => meal.mealDate === date && meal.isActive).length,
       branchSummary: branchStats(dayOrders, store.branches),
       recentOrders: dayOrders.slice(0, 6),
-      monthly: monthlySeries(viewsOf(store)),
+      monthly: overlayMonthly(monthlySeries(allViews), allViews, store.adjustments ?? []),
     };
+  });
+}
+
+export async function saveDailyAdjustment(input: DailyAdjustment) {
+  return locked(async () => {
+    const store = await read();
+    store.adjustments = store.adjustments ?? [];
+    const next: DailyAdjustment = {
+      date: input.date,
+      totalOrders: input.totalOrders,
+      totalPortions: input.totalPortions,
+      givenPortions: input.givenPortions,
+      totalRevenue: input.totalRevenue,
+      activeMeals: input.activeMeals,
+    };
+    const index = store.adjustments.findIndex((item) => item.date === input.date);
+    if (index >= 0) store.adjustments[index] = next;
+    else store.adjustments.push(next);
+    await persist(store, { requireCloud: true });
+    return next;
+  });
+}
+
+export async function clearDailyAdjustment(date: string) {
+  return locked(async () => {
+    const store = await read();
+    store.adjustments = (store.adjustments ?? []).filter((item) => item.date !== date);
+    await persist(store, { requireCloud: true });
   });
 }
 
@@ -862,13 +900,26 @@ export async function getReport(range: "day" | "week" | "month"): Promise<Report
     const store = await read();
     const { from, to } = rangeFor(range);
     const orders = filterOrders(store, { from, to });
-    const totals = summarize(orders);
+    const adjustments = (store.adjustments ?? []).filter((item) => item.date >= from && item.date <= to);
+    const daily = overlayDaily(dailySeries(orders, from, to), adjustments);
+    const totals = daily.reduce(
+      (sum, point) => {
+        const dayOrders = orders.filter((order) => toUlaanbaatarDate(order.createdAt) === point.date);
+        const next = applyDailyAdjustment(summarize(dayOrders), adjustments.find((item) => item.date === point.date));
+        sum.totalOrders += next.totalOrders;
+        sum.totalPortions += next.totalPortions;
+        sum.givenPortions += next.givenPortions;
+        sum.totalRevenue += next.totalRevenue;
+        return sum;
+      },
+      { totalOrders: 0, totalPortions: 0, givenPortions: 0, totalRevenue: 0 },
+    );
     return {
       range,
       from,
       to,
       ...totals,
-      daily: dailySeries(orders, from, to),
+      daily,
       byBranch: branchStats(orders, store.branches),
       topMeals: topMeals(orders),
     };

@@ -259,6 +259,15 @@ export type StoreSettings = AppSettings & {
   adminSecret: string;
 };
 
+export type DailyAdjustment = {
+  date: string;
+  totalOrders?: number;
+  totalPortions?: number;
+  givenPortions?: number;
+  totalRevenue?: number;
+  activeMeals?: number;
+};
+
 export type StoreData = {
   users: UserRecord[];
   profiles: ProfileRecord[];
@@ -268,4 +277,5 @@ export type StoreData = {
   orderItems: OrderItem[];
   settings: StoreSettings;
   permissions: Permission[];
+  adjustments?: DailyAdjustment[];
 };

@@ -17,6 +17,8 @@ import {
   fulfillOrder,
   getAdminSecret,
   placeOrder,
+  clearDailyAdjustment,
+  saveDailyAdjustment,
   removePermission,
   saveBranch,
   saveMeal,
@@ -40,6 +42,7 @@ import {
   branchLoginSchema,
   branchPasswordSchema,
   branchSchema,
+  dailyAdjustmentSchema,
   fulfillOrderSchema,
   loginSchema,
   mealSchema,
@@ -339,6 +342,34 @@ export async function updateSettingsAction(input: unknown) {
     return { ok: true as const };
   } catch (error) {
     return { ok: false as const, message: errorMessage(error, "Тохиргоо хадгалахад алдаа гарлаа.") };
+  }
+}
+
+export async function saveDailyAdjustmentAction(input: unknown) {
+  try {
+    await requireAdmin();
+    const parsed = dailyAdjustmentSchema.safeParse(input);
+    if (!parsed.success) {
+      return { ok: false as const, message: parsed.error.issues[0]?.message ?? "Мэдээллээ шалгана уу." };
+    }
+    await saveDailyAdjustment(parsed.data);
+    revalidatePath("/admin", "layout");
+    revalidatePath("/admin/reports");
+    return { ok: true as const };
+  } catch (error) {
+    return { ok: false as const, message: errorMessage(error, "Өдрийн тоо хадгалахад алдаа гарлаа.") };
+  }
+}
+
+export async function clearDailyAdjustmentAction(date: string) {
+  try {
+    await requireAdmin();
+    await clearDailyAdjustment(date);
+    revalidatePath("/admin", "layout");
+    revalidatePath("/admin/reports");
+    return { ok: true as const };
+  } catch (error) {
+    return { ok: false as const, message: errorMessage(error, "Өдрийн тоо буцаахад алдаа гарлаа.") };
   }
 }
 
