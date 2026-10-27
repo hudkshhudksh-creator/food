@@ -97,7 +97,7 @@ export default async function DashboardPage({
                         {order.items
                           .map((item) =>
                             order.status === "received"
-                              ? `${item.mealName} · ${item.givenQuantity ?? item.quantity} өгсөн`
+                              ? `${item.mealName} · ${item.givenQuantity ?? item.quantity} өгсөн, ${item.quantity - (item.givenQuantity ?? item.quantity)} өгөөгүй`
                               : `${item.mealName} · ${item.quantity} порц`,
                           )
                           .join(", ")}

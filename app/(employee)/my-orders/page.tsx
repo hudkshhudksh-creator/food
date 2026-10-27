@@ -48,7 +48,7 @@ export default async function MyOrdersPage() {
                 <span>{order.branchName}</span>
                 <span>
                   {order.status === "received"
-                    ? `${order.items.reduce((sum, item) => sum + (item.givenQuantity ?? item.quantity), 0)} өгсөн`
+                    ? `${order.items.reduce((sum, item) => sum + (item.givenQuantity ?? item.quantity), 0)} өгсөн, ${order.items.reduce((sum, item) => sum + (item.quantity - (item.givenQuantity ?? item.quantity)), 0)} өгөөгүй`
                     : `${order.items.reduce((sum, item) => sum + item.quantity, 0)} порц`}
                 </span>
                 <span className="font-medium text-slate-900">{formatMoney(order.totalAmount)}</span>

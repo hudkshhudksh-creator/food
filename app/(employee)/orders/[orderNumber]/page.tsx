@@ -47,7 +47,13 @@ export default async function OrderDetailPage({
           <Row label="Хоол" value={item?.mealName ?? "—"} />
           <Row label="Захиалсан тоо" value={String(item?.quantity ?? 0)} />
           {order.status === "received" ? (
-            <Row label="Өгсөн тоо" value={String(item?.givenQuantity ?? item?.quantity ?? 0)} />
+            <>
+              <Row label="Өгсөн тоо" value={String(item?.givenQuantity ?? item?.quantity ?? 0)} />
+              <Row
+                label="Өгөөгүй тоо"
+                value={String((item?.quantity ?? 0) - (item?.givenQuantity ?? item?.quantity ?? 0))}
+              />
+            </>
           ) : null}
           <Row label="Нийт үнэ" value={formatMoney(order.totalAmount)} />
           <Row label="Овог нэр" value={fullName(order.customerLastName, order.customerFirstName)} />

@@ -820,7 +820,7 @@ export async function fulfillOrder(orderId: string, given: { itemId: string; qua
     const order = store.orders.find((item) => item.id === orderId);
     if (!order) throw new AppError("ORDER_NOT_FOUND");
     if (order.status === "cancelled") throw new AppError("INVALID_STATUS");
-    if (order.status === "received") return viewsOf(store).find((item) => item.id === orderId)!;
+    const alreadyGiven = order.status === "received";
     const items = store.orderItems.filter((item) => item.orderId === order.id);
     let total = 0;
     for (const item of items) {
@@ -829,11 +829,12 @@ export async function fulfillOrder(orderId: string, given: { itemId: string; qua
       if (!Number.isInteger(quantity) || quantity < 0 || quantity > item.quantity) {
         throw new AppError("INVALID_GIVEN_QTY");
       }
-      const leftover = item.quantity - quantity;
-      if (leftover > 0) {
+      const previousGiven = alreadyGiven ? (item.givenQuantity ?? item.quantity) : item.quantity;
+      const stockDelta = previousGiven - quantity;
+      if (stockDelta !== 0) {
         const meal = store.meals.find((mealItem) => mealItem.id === item.mealId);
         if (meal) {
-          meal.availableQuantity += leftover;
+          meal.availableQuantity += stockDelta;
           meal.updatedAt = new Date().toISOString();
         }
       }
