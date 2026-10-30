@@ -91,5 +91,6 @@ export function buildSeed(): StoreData {
     },
     permissions: defaultPermissions(),
     adjustments: [],
+    credits: [],
   };
 }

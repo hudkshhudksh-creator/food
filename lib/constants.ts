@@ -61,6 +61,7 @@ export const ADMIN_NAV = [
   { href: "/admin/meals/new", label: "Хоол нэмэх", icon: "plus", permission: "meals" },
   { href: "/admin/orders", label: "Захиалгууд", icon: "orders", permission: "orders" },
   { href: "/admin/branches", label: "Салбарууд", icon: "branches", permission: "branches" },
+  { href: "/admin/credits", label: "Зээл", icon: "credit", permission: "credits" },
   { href: "/admin/reports", label: "Тайлан", icon: "reports", permission: "reports" },
   { href: "/admin/rights", label: "Эрх", icon: "rights", permission: "rights" },
   { href: "/admin/settings", label: "Тохиргоо", icon: "settings", permission: "settings" },

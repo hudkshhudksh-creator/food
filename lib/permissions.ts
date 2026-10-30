@@ -6,6 +6,7 @@ const COOK = [
   { key: "meals", label: "Өнөөдрийн хоол, хоол нэмэх" },
   { key: "orders", label: "Захиалгууд" },
   { key: "branches", label: "Салбарууд" },
+  { key: "credits", label: "Зээл" },
   { key: "settings", label: "Тохиргоо" },
 ] as const;
 
@@ -49,6 +50,7 @@ export function permissionForAdminPath(pathname: string) {
   if (pathname.startsWith("/admin/meals")) return "meals";
   if (pathname.startsWith("/admin/orders")) return "orders";
   if (pathname.startsWith("/admin/branches")) return "branches";
+  if (pathname.startsWith("/admin/credits")) return "credits";
   if (pathname.startsWith("/admin/reports")) return "reports";
   if (pathname.startsWith("/admin/settings")) return "settings";
   if (pathname.startsWith("/admin/rights")) return "rights";

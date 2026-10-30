@@ -268,6 +268,25 @@ export type DailyAdjustment = {
   activeMeals?: number;
 };
 
+export type Credit = {
+  id: string;
+  lastName: string;
+  firstName: string;
+  branchId: string;
+  branchName: string;
+  takenAt: string;
+  amount: number;
+  createdAt: string;
+};
+
+export type CreditInput = {
+  lastName: string;
+  firstName: string;
+  branchId: string;
+  takenAt: string;
+  amount: number;
+};
+
 export type StoreData = {
   users: UserRecord[];
   profiles: ProfileRecord[];
@@ -278,4 +297,5 @@ export type StoreData = {
   settings: StoreSettings;
   permissions: Permission[];
   adjustments?: DailyAdjustment[];
+  credits?: Credit[];
 };

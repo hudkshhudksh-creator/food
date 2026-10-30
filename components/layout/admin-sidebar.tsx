@@ -14,6 +14,7 @@ import {
   Shield,
   Utensils,
   UtensilsCrossed,
+  Wallet,
 } from "lucide-react";
 import { logoutAction } from "@/app/actions";
 import { Button } from "@/components/ui/button";
@@ -31,6 +32,7 @@ const icons = {
   plus: PlusCircle,
   orders: ClipboardList,
   branches: Building2,
+  credit: Wallet,
   reports: ChartColumn,
   rights: Shield,
   settings: Settings,

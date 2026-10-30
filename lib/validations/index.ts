@@ -127,6 +127,14 @@ export const settingsSchema = z.object({
     .refine((value) => value === "" || isMnPhone(value), "Утасны дугаар буруу байна."),
 });
 
+export const creditSchema = z.object({
+  lastName: z.string().trim().min(1, "Овог оруулна уу.").max(80),
+  firstName: z.string().trim().min(1, "Нэр оруулна уу.").max(80),
+  branchId: z.string().uuid("Салбар сонгоно уу."),
+  takenAt: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, "Огноо оруулна уу."),
+  amount: z.coerce.number({ invalid_type_error: "Зээлийн хэмжээ оруулна уу." }).int().min(1, "Зээлийн хэмжээ оруулна уу.").max(50_000_000),
+});
+
 export const dailyAdjustmentSchema = z.object({
   date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, "Огноо оруулна уу."),
   totalOrders: z.coerce.number().int().min(0).max(100000),

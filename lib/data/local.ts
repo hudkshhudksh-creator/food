@@ -29,6 +29,8 @@ import type {
   AppSettings,
   Branch,
   BranchInput,
+  Credit,
+  CreditInput,
   DailyAdjustment,
   DashboardStats,
   Meal,
@@ -118,6 +120,10 @@ function normalize(store: StoreData) {
   }
   if (!Array.isArray(store.adjustments)) {
     store.adjustments = [];
+    changed = true;
+  }
+  if (!Array.isArray(store.credits)) {
+    store.credits = [];
     changed = true;
   }
   if (!Array.isArray(store.permissions)) {
@@ -865,6 +871,45 @@ export async function getDashboard(date = todayInUlaanbaatar()): Promise<Dashboa
       recentOrders: dayOrders.slice(0, 6),
       monthly: overlayMonthly(monthlySeries(allViews), allViews, store.adjustments ?? []),
     };
+  });
+}
+
+export async function listCredits(): Promise<Credit[]> {
+  return locked(async () => {
+    const store = await read();
+    return [...(store.credits ?? [])].sort((a, b) => (a.takenAt < b.takenAt ? 1 : a.takenAt > b.takenAt ? -1 : a.createdAt < b.createdAt ? 1 : -1));
+  });
+}
+
+export async function addCredit(input: CreditInput) {
+  return locked(async () => {
+    const store = await read();
+    const branch = store.branches.find((item) => item.id === input.branchId);
+    if (!branch) throw new AppError("BRANCH_INACTIVE");
+    const credit: Credit = {
+      id: crypto.randomUUID(),
+      lastName: input.lastName.trim(),
+      firstName: input.firstName.trim(),
+      branchId: branch.id,
+      branchName: branch.name,
+      takenAt: input.takenAt,
+      amount: input.amount,
+      createdAt: new Date().toISOString(),
+    };
+    store.credits = store.credits ?? [];
+    store.credits.unshift(credit);
+    await persist(store, { requireCloud: true });
+    return credit;
+  });
+}
+
+export async function deleteCredit(id: string) {
+  return locked(async () => {
+    const store = await read();
+    const before = store.credits?.length ?? 0;
+    store.credits = (store.credits ?? []).filter((item) => item.id !== id);
+    if ((store.credits?.length ?? 0) === before) return;
+    await persist(store, { requireCloud: true });
   });
 }
 

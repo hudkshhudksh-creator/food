@@ -8,10 +8,12 @@ import { requireAdmin, requireStaff, requireUser } from "@/lib/auth/current-user
 import { clearSession, createSession } from "@/lib/auth/session";
 import { authenticate, authenticateBranch } from "@/lib/data/local";
 import {
+  addCredit,
   addPermission,
   clearBranchPassword,
   createAccount,
   deleteAccount,
+  deleteCredit,
   deleteBranch,
   deleteMeal,
   fulfillOrder,
@@ -42,6 +44,7 @@ import {
   branchLoginSchema,
   branchPasswordSchema,
   branchSchema,
+  creditSchema,
   dailyAdjustmentSchema,
   fulfillOrderSchema,
   loginSchema,
@@ -62,6 +65,7 @@ function revalidateAll() {
   revalidatePath("/admin/reports");
   revalidatePath("/admin/meals");
   revalidatePath("/admin/branches");
+  revalidatePath("/admin/credits");
 }
 
 async function safeNext(next: string | undefined, role: Role) {
@@ -236,6 +240,32 @@ export async function fulfillOrderAction(input: unknown) {
     return { ok: true as const };
   } catch (error) {
     return { ok: false as const, message: errorMessage(error, "Өгсөн тоо хадгалахад алдаа гарлаа.") };
+  }
+}
+
+export async function addCreditAction(input: unknown) {
+  try {
+    await requireCook("credits");
+    const parsed = creditSchema.safeParse(input);
+    if (!parsed.success) {
+      return { ok: false as const, message: parsed.error.issues[0]?.message ?? "Мэдээллээ шалгана уу." };
+    }
+    const credit = await addCredit(parsed.data);
+    revalidateAll();
+    return { ok: true as const, credit };
+  } catch (error) {
+    return { ok: false as const, message: errorMessage(error, "Зээл нэмэхэд алдаа гарлаа.") };
+  }
+}
+
+export async function deleteCreditAction(id: string) {
+  try {
+    await requireCook("credits");
+    await deleteCredit(id);
+    revalidateAll();
+    return { ok: true as const };
+  } catch (error) {
+    return { ok: false as const, message: errorMessage(error, "Зээл хасахад алдаа гарлаа.") };
   }
 }
 
