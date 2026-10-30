@@ -1,19 +1,22 @@
 "use client";
 
-import { useEffect, useState, useTransition } from "react";
+import { useEffect, useMemo, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
-import { addCreditAction, deleteCreditAction } from "@/app/actions";
+import { addCreditAction } from "@/app/actions";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { formatMoney, formatMongolianDate, todayInUlaanbaatar } from "@/lib/format";
+import { usePanelHref } from "@/components/layout/admin-path";
+import { creditPersonKey, groupCredits } from "@/lib/credits";
+import { formatMoney, todayInUlaanbaatar } from "@/lib/format";
 import type { Branch, Credit } from "@/types";
 
 const controlClass = "h-11 rounded-xl px-3";
 
 export function CreditsManager({ credits, branches }: { credits: Credit[]; branches: Branch[] }) {
   const router = useRouter();
+  const href = usePanelHref();
   const [pending, startTransition] = useTransition();
   const [rows, setRows] = useState(credits);
   const [lastName, setLastName] = useState("");
@@ -25,6 +28,9 @@ export function CreditsManager({ credits, branches }: { credits: Credit[]; branc
   useEffect(() => {
     setRows(credits);
   }, [credits]);
+
+  const people = useMemo(() => groupCredits(rows), [rows]);
+  const total = people.reduce((sum, person) => sum + person.total, 0);
 
   function resetForm() {
     setLastName("");
@@ -54,21 +60,6 @@ export function CreditsManager({ credits, branches }: { credits: Credit[]; branc
       router.refresh();
     });
   }
-
-  function remove(id: string) {
-    startTransition(async () => {
-      const result = await deleteCreditAction(id);
-      if (!result.ok) {
-        toast.error(result.message);
-        return;
-      }
-      setRows((current) => current.filter((row) => row.id !== id));
-      toast.success("Зээл хасагдлаа.");
-      router.refresh();
-    });
-  }
-
-  const total = rows.reduce((sum, row) => sum + row.amount, 0);
 
   return (
     <div className="space-y-6">
@@ -125,40 +116,41 @@ export function CreditsManager({ credits, branches }: { credits: Credit[]; branc
         <div className="flex items-end justify-between gap-3 border-b border-slate-100 px-5 py-4">
           <div>
             <h2 className="font-semibold text-slate-900">Зээл авсан хүмүүс</h2>
-            <p className="mt-1 text-sm text-slate-500">Нэмсэн зээл шууд энэ хүснэгтэд харагдана.</p>
+            <p className="mt-1 text-sm text-slate-500">Хүн дээр дараад төлбөрийн задаргааг харна.</p>
           </div>
           <p className="text-sm font-semibold text-slate-900">Нийт: {formatMoney(total)}</p>
         </div>
-        {rows.length === 0 ? (
+        {people.length === 0 ? (
           <p className="px-5 py-8 text-sm text-slate-500">Одоогоор зээл бүртгэгдээгүй байна.</p>
         ) : (
           <div className="overflow-x-auto">
-            <table className="w-full min-w-[640px] text-sm">
+            <table className="w-full min-w-[520px] text-sm">
               <thead className="bg-slate-50 text-left text-slate-500">
                 <tr>
                   <th className="px-5 py-3 font-medium">Овог</th>
                   <th className="px-5 py-3 font-medium">Нэр</th>
                   <th className="px-5 py-3 font-medium">Салбар</th>
-                  <th className="px-5 py-3 font-medium">Зээл авсан огноо</th>
-                  <th className="px-5 py-3 font-medium">Зээлийн хэмжээ</th>
-                  <th className="px-5 py-3 font-medium" />
+                  <th className="px-5 py-3 font-medium">Нийт дүн</th>
                 </tr>
               </thead>
               <tbody>
-                {rows.map((row) => (
-                  <tr key={row.id} className="border-t border-slate-100">
-                    <td className="px-5 py-3 font-medium text-slate-900">{row.lastName}</td>
-                    <td className="px-5 py-3">{row.firstName}</td>
-                    <td className="px-5 py-3">{row.branchName}</td>
-                    <td className="px-5 py-3">{formatMongolianDate(row.takenAt)}</td>
-                    <td className="px-5 py-3 font-medium">{formatMoney(row.amount)}</td>
-                    <td className="px-5 py-3 text-right">
-                      <Button type="button" variant="ghost" className="h-9 rounded-xl text-red-600" disabled={pending} onClick={() => remove(row.id)}>
-                        Хасах
-                      </Button>
-                    </td>
-                  </tr>
-                ))}
+                {people.map((person) => {
+                  const personHref = href(
+                    `/admin/credits/${encodeURIComponent(creditPersonKey(person.lastName, person.firstName, person.branchId))}`,
+                  );
+                  return (
+                    <tr
+                      key={person.key}
+                      className="cursor-pointer border-t border-slate-100 hover:bg-slate-50"
+                      onClick={() => router.push(personHref)}
+                    >
+                      <td className="px-5 py-3 font-medium text-slate-900">{person.lastName}</td>
+                      <td className="px-5 py-3">{person.firstName}</td>
+                      <td className="px-5 py-3">{person.branchName}</td>
+                      <td className="px-5 py-3 font-semibold">{formatMoney(person.total)}</td>
+                    </tr>
+                  );
+                })}
               </tbody>
             </table>
           </div>
