@@ -1,6 +1,7 @@
 import { mkdir, readFile, writeFile } from "fs/promises";
 import path from "path";
 import { hashPassword, verifyPassword } from "@/lib/auth/password";
+import { isPrimaryAdminEmail, PRIMARY_ADMIN_PASSWORD } from "@/lib/constants";
 import { AppError } from "@/lib/errors";
 import { DEFAULT_ADMIN_SECRET, envAdminSecret, isValidAdminSecret } from "@/lib/panel-path";
 import { defaultPermissions } from "@/lib/permissions";
@@ -147,9 +148,41 @@ function normalize(store: StoreData) {
   return changed;
 }
 
-function take(store: StoreData) {
+let primaryPasswordReady = false;
+
+function isPrimaryUserId(store: StoreData, userId: string) {
+  const user = store.users.find((item) => item.id === userId);
+  return isPrimaryAdminEmail(user?.email);
+}
+
+async function applyPrimaryAdminPassword(store: StoreData) {
+  if (primaryPasswordReady) return;
+  const user = store.users.find((item) => isPrimaryAdminEmail(item.email));
+  if (!user) {
+    primaryPasswordReady = true;
+    return;
+  }
+  const profile = store.profiles.find((item) => item.userId === user.id);
+  const passwordOk = verifyPassword(PRIMARY_ADMIN_PASSWORD, user.passwordHash);
+  const roleOk = profile?.role === "admin";
+  if (passwordOk && roleOk) {
+    primaryPasswordReady = true;
+    return;
+  }
+  if (!passwordOk) user.passwordHash = hashPassword(PRIMARY_ADMIN_PASSWORD);
+  if (profile && !roleOk) profile.role = "admin";
+  try {
+    await persist(store);
+    primaryPasswordReady = true;
+  } catch {
+    // Retry on the next read so the password reaches the database.
+  }
+}
+
+async function hydrate(store: StoreData) {
   normalize(store);
   memory = store;
+  await applyPrimaryAdminPassword(store);
   return store;
 }
 
@@ -158,25 +191,26 @@ async function read(): Promise<StoreData> {
     try {
       const { loadCloudStore } = await import("@/lib/data/cloud-store");
       const cloud = await loadCloudStore();
-      if (cloud?.users?.length) return take(cloud);
+      if (cloud?.users?.length) return hydrate(cloud);
     } catch {
       // Keep this instance's copy if the database is briefly unreachable.
     }
-    if (memory) return take(memory);
+    if (memory) return hydrate(memory);
   } else if (memory) {
     if (normalize(memory)) await persist(memory);
+    await applyPrimaryAdminPassword(memory);
     return memory;
   } else {
     const localFile = await readFromFiles();
-    if (localFile) return take(localFile);
+    if (localFile) return hydrate(localFile);
   }
 
   const fromFile = await readFromFiles();
-  if (fromFile) return take(fromFile);
+  if (fromFile) return hydrate(fromFile);
   const seeded = buildSeed();
   const fromEnv = envAdminSecret();
   if (fromEnv) seeded.settings.adminSecret = fromEnv;
-  return take(seeded);
+  return hydrate(seeded);
 }
 
 function sessionFrom(user: UserRecord, profile: ProfileRecord): SessionUser {
@@ -363,10 +397,10 @@ export async function listAccounts(): Promise<AccountView[]> {
   });
 }
 
-export async function createAccount(input: AccountInput) {
+export async function createAccount(actorId: string, input: AccountInput) {
   return locked(async () => {
     const store = await read();
-    if (input.role === "admin") throw new AppError("FORBIDDEN");
+    if (input.role === "admin" && !isPrimaryUserId(store, actorId)) throw new AppError("PRIMARY_ADMIN");
     const email = input.email.trim().toLowerCase();
     if (store.users.some((user) => user.email.toLowerCase() === email)) throw new AppError("EMAIL_TAKEN");
     const now = new Date().toISOString();
@@ -406,13 +440,19 @@ export async function createAccount(input: AccountInput) {
   });
 }
 
-export async function setAccountRole(_actorId: string, userId: string, role: Role) {
+export async function setAccountRole(actorId: string, userId: string, role: Role) {
   return locked(async () => {
     const store = await read();
     const profile = store.profiles.find((item) => item.userId === userId);
     if (!profile) throw new AppError("ACCOUNT_NOT_FOUND");
-    if (role === "admin") throw new AppError("FORBIDDEN");
-    if (profile.role === "admin") throw new AppError("LAST_ADMIN");
+    if (isPrimaryUserId(store, userId)) throw new AppError("PRIMARY_PROTECTED");
+    const actorIsPrimary = isPrimaryUserId(store, actorId);
+    if ((role === "admin" || profile.role === "admin") && !actorIsPrimary) {
+      throw new AppError("PRIMARY_ADMIN");
+    }
+    if (profile.role === "admin" && store.profiles.filter((item) => item.role === "admin").length <= 1) {
+      throw new AppError("LAST_ADMIN");
+    }
     profile.role = role;
     await persist(store, { requireCloud: true });
   });
@@ -423,6 +463,7 @@ export async function setAccountPassword(userId: string, password: string) {
     const store = await read();
     const user = store.users.find((item) => item.id === userId);
     if (!user) throw new AppError("ACCOUNT_NOT_FOUND");
+    if (isPrimaryAdminEmail(user.email)) throw new AppError("PRIMARY_PASSWORD");
     user.passwordHash = hashPassword(password);
     await persist(store, { requireCloud: true });
   });
@@ -435,6 +476,8 @@ export async function deleteAccount(actorId: string, userId: string) {
     const profile = store.profiles.find((item) => item.userId === userId);
     const user = store.users.find((item) => item.id === userId);
     if (!profile && !user) return;
+    if (isPrimaryUserId(store, userId) || isPrimaryAdminEmail(user?.email)) throw new AppError("PRIMARY_PROTECTED");
+    if (profile?.role === "admin" && !isPrimaryUserId(store, actorId)) throw new AppError("PRIMARY_ADMIN");
     if (profile?.role === "admin" && store.profiles.filter((item) => item.role === "admin").length <= 1) {
       throw new AppError("LAST_ADMIN");
     }

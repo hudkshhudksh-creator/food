@@ -1,11 +1,18 @@
 import type { OrderStatus } from "@/types";
 
+export const PRIMARY_ADMIN_EMAIL = "admin@company.mn";
+export const PRIMARY_ADMIN_PASSWORD = "Dorjko@8989admin";
+
+export function isPrimaryAdminEmail(email?: string | null) {
+  return (email ?? "").trim().toLowerCase() === PRIMARY_ADMIN_EMAIL;
+}
+
 export const DEMO_ACCOUNTS = [
   {
     role: "admin" as const,
     label: "Админ",
-    email: "admin@company.mn",
-    password: "Admin123!",
+    email: PRIMARY_ADMIN_EMAIL,
+    password: PRIMARY_ADMIN_PASSWORD,
   },
   {
     role: "employee" as const,

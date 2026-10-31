@@ -21,7 +21,7 @@ export default async function RightsPage() {
     <div className="space-y-6">
       <PageHeader
         title="Хэрэглэгч, эрх"
-        description="Тогооч, хэрэглэгч нэмэх. Тогоочийн цэс, хэрэглэгчийн эрхийг энд тохируулна."
+        description="Тогооч, хэрэглэгч нэмэх. Зөвхөн үндсэн админ бусад админ эрх нэмж, хасна."
       />
       <RightsManager
         secret={secret}
@@ -29,6 +29,7 @@ export default async function RightsPage() {
         accounts={accounts}
         branches={branches}
         currentUserId={user.id}
+        currentUserEmail={user.email}
       />
     </div>
   );

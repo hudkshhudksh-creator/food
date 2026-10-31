@@ -24,7 +24,7 @@ import {
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { DEMO_ACCOUNTS } from "@/lib/constants";
+import { DEMO_ACCOUNTS, isPrimaryAdminEmail } from "@/lib/constants";
 import { fullName } from "@/lib/format";
 import type { AccountView, Branch, Permission, PermissionGroup, Role } from "@/types";
 
@@ -36,18 +36,21 @@ export function RightsManager({
   accounts,
   branches,
   currentUserId,
+  currentUserEmail,
 }: {
   secret: string;
   permissions: Permission[];
   accounts: AccountView[];
   branches: Branch[];
   currentUserId: string;
+  currentUserEmail: string;
 }) {
   const router = useRouter();
   const [pending, startTransition] = useTransition();
   const [draftSecret, setDraftSecret] = useState(secret);
   const [filter, setFilter] = useState<"all" | Role>("all");
-  const demoEmails = new Set(DEMO_ACCOUNTS.map((item) => item.email));
+  const canManageAdmins = isPrimaryAdminEmail(currentUserEmail);
+  const demoEmails = new Set(DEMO_ACCOUNTS.filter((item) => !isPrimaryAdminEmail(item.email)).map((item) => item.email));
   const visible = accounts.filter((account) => filter === "all" || account.role === filter);
   const counts = {
     all: accounts.length,
@@ -84,6 +87,7 @@ export function RightsManager({
             <h2 className="text-base font-semibold">Хэрэглэгчид</h2>
             <p className="mt-1 text-sm text-slate-500">
               Энд нэмсэн тогооч, хэрэглэгч харагдана. Эрх өгөх, нууц үг солих, хасах.
+              {canManageAdmins ? " Зөвхөн та бусад админ эрх нэмж, хасна." : " Админ эрх нэмэх, хасахыг зөвхөн үндсэн админ хийнэ."}
             </p>
           </div>
           <div className="flex flex-wrap gap-2">
@@ -164,15 +168,42 @@ export function RightsManager({
                     Хэрэглэгчийн эрх болгох
                   </Button>
                 ) : null}
-                <AccountPasswordButton
-                  account={account}
-                  pending={pending}
-                  onSave={(password) => run(() => setAccountPasswordAction({ userId: account.id, password }), "Нууц үг солигдлоо.")}
-                />
+                {canManageAdmins && !isPrimaryAdminEmail(account.email) && account.role !== "admin" ? (
+                  <Button
+                    variant="outline"
+                    className="h-10 rounded-xl"
+                    disabled={pending}
+                    onClick={() => run(() => setAccountRoleAction(account.id, "admin"), "Админ эрх өглөө.")}
+                  >
+                    Админ эрх өгөх
+                  </Button>
+                ) : null}
+                {canManageAdmins && !isPrimaryAdminEmail(account.email) && account.role === "admin" ? (
+                  <Button
+                    variant="outline"
+                    className="h-10 rounded-xl"
+                    disabled={pending}
+                    onClick={() => run(() => setAccountRoleAction(account.id, "cook"), "Админ эрх хаслаа.")}
+                  >
+                    Админ эрх хасах
+                  </Button>
+                ) : null}
+                {!isPrimaryAdminEmail(account.email) ? (
+                  <AccountPasswordButton
+                    account={account}
+                    pending={pending}
+                    onSave={(password) => run(() => setAccountPasswordAction({ userId: account.id, password }), "Нууц үг солигдлоо.")}
+                  />
+                ) : null}
                 <Button
                   variant="destructive"
                   className="h-10 rounded-xl"
-                  disabled={pending || account.id === currentUserId || account.role === "admin"}
+                  disabled={
+                    pending ||
+                    account.id === currentUserId ||
+                    isPrimaryAdminEmail(account.email) ||
+                    (account.role === "admin" && !canManageAdmins)
+                  }
                   onClick={() => run(() => deleteAccountAction(account.id), "Бүртгэл хасагдлаа.")}
                 >
                   Хасах
@@ -181,7 +212,12 @@ export function RightsManager({
             </article>
           ))}
         </div>
-        <AccountForm branches={branches} pending={pending} onCreate={(input) => run(() => createAccountAction(input), "Бүртгэл нэмэгдлээ.")} />
+        <AccountForm
+          branches={branches}
+          pending={pending}
+          canCreateAdmin={canManageAdmins}
+          onCreate={(input) => run(() => createAccountAction(input), "Бүртгэл нэмэгдлээ.")}
+        />
       </section>
 
       <div className="grid gap-6 lg:grid-cols-2">
@@ -397,21 +433,23 @@ function AccountPasswordButton({
 function AccountForm({
   branches,
   pending,
+  canCreateAdmin,
   onCreate,
 }: {
   branches: Branch[];
   pending: boolean;
+  canCreateAdmin: boolean;
   onCreate: (input: {
     lastName: string;
     firstName: string;
     email: string;
     phone: string;
     password: string;
-    role: "cook" | "employee";
+    role: Role;
     branchId: string;
   }) => void;
 }) {
-  const [role, setRole] = useState<"cook" | "employee">("employee");
+  const [role, setRole] = useState<Role>("employee");
   return (
     <form
       className="mt-6 grid gap-3 border-t border-slate-100 pt-5 sm:grid-cols-2"
@@ -450,11 +488,12 @@ function AccountForm({
       <Field label="Эрх">
         <select
           value={role}
-          onChange={(event) => setRole(event.target.value as "cook" | "employee")}
+          onChange={(event) => setRole(event.target.value as Role)}
           className="h-11 w-full rounded-xl border border-slate-200 bg-white px-3 text-sm"
         >
           <option value="employee">Хэрэглэгч</option>
           <option value="cook">Тогооч</option>
+          {canCreateAdmin ? <option value="admin">Админ</option> : null}
         </select>
       </Field>
       <Field label="Салбар">

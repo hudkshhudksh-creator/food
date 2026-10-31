@@ -156,9 +156,9 @@ export async function listAccounts() {
   return local.listAccounts();
 }
 
-export async function createAccount(input: AccountInput) {
+export async function createAccount(actorId: string, input: AccountInput) {
   if (remoteMode()) throw new Error("FORBIDDEN");
-  return local.createAccount(input);
+  return local.createAccount(actorId, input);
 }
 
 export async function setAccountRole(actorId: string, userId: string, role: Role) {

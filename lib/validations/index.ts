@@ -105,7 +105,7 @@ export const accountSchema = z.object({
     .trim()
     .refine((value) => value === "" || isMnPhone(value), "Утасны дугаар буруу байна."),
   password: z.string().min(6, "Нууц үг хамгийн багадаа 6 тэмдэгт байна."),
-  role: z.enum(["cook", "employee"]),
+  role: z.enum(["admin", "cook", "employee"]),
   branchId: z.string().trim().optional().or(z.literal("")),
 });
 

@@ -7,6 +7,7 @@ import { changeOwnPasswordAction, updateProfileAction, updateSettingsAction } fr
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { isPrimaryAdminEmail } from "@/lib/constants";
 import type { AppSettings, SessionUser } from "@/types";
 
 const controlClass = "h-11 rounded-xl";
@@ -22,6 +23,7 @@ export function SettingsForms({
 }) {
   const router = useRouter();
   const [pending, startTransition] = useTransition();
+  const isPrimary = isPrimaryAdminEmail(user.email);
 
   function saveProfile(formData: FormData) {
     const password = String(formData.get("password") ?? "");
@@ -91,15 +93,21 @@ export function SettingsForms({
           <Input id="phone" name="phone" defaultValue={user.phone} className={controlClass} />
         </div>
         <p className="text-sm text-slate-500">{user.email}</p>
-        <div className="grid gap-2">
-          <Label htmlFor="password">Шинэ нууц үг</Label>
-          <Input id="password" name="password" type="password" autoComplete="new-password" className={controlClass} />
-        </div>
-        <div className="grid gap-2">
-          <Label htmlFor="confirmPassword">Нууц үг дахин</Label>
-          <Input id="confirmPassword" name="confirmPassword" type="password" autoComplete="new-password" className={controlClass} />
-        </div>
-        <p className="text-xs text-slate-400">Нууц үг солихгүй бол хоосон үлдээнэ.</p>
+        {isPrimary ? (
+          <p className="text-xs text-slate-400">Үндсэн админы нууц үгийг эндээс солих боломжгүй.</p>
+        ) : (
+          <>
+            <div className="grid gap-2">
+              <Label htmlFor="password">Шинэ нууц үг</Label>
+              <Input id="password" name="password" type="password" autoComplete="new-password" className={controlClass} />
+            </div>
+            <div className="grid gap-2">
+              <Label htmlFor="confirmPassword">Нууц үг дахин</Label>
+              <Input id="confirmPassword" name="confirmPassword" type="password" autoComplete="new-password" className={controlClass} />
+            </div>
+            <p className="text-xs text-slate-400">Нууц үг солихгүй бол хоосон үлдээнэ.</p>
+          </>
+        )}
         <Button type="submit" disabled={pending} className="h-11 rounded-xl">
           Хадгалах
         </Button>

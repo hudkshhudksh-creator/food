@@ -459,7 +459,7 @@ export async function createAccountAction(input: unknown) {
     if (!parsed.success) {
       return { ok: false as const, message: parsed.error.issues[0]?.message ?? "Мэдээллээ шалгана уу." };
     }
-    await createAccount({
+    await createAccount(actor.id, {
       ...parsed.data,
       phone: parsed.data.phone,
       branchId: parsed.data.branchId || undefined,
